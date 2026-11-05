@@ -5,6 +5,12 @@ import Observation
 final class HermesStore {
     var endpoint = ""
     var lastError: String?
+    var threadListError: String?
+    var commandWarning: String?
+    var commandCatalogError: String?
+    var modelCatalogError: String?
+    var hasLoadedThreads = false
+    var threadSearchQuery = ""
     var composerText = "" { didSet { composerDidChange() } }
     var selectedModel = ""
     var selectedEffort = ""
@@ -18,6 +24,7 @@ final class HermesStore {
     var isUploadingAttachment = false
     var threads: [HermesThread] = []
     var selectedThreadID: String?
+    var selectedThreadTitle: String?
     var messages: [ChatMessage] = []
     var isStreaming = false
     var attachments: [ChatAttachment] = [] { didSet { composerDidChange() } }
@@ -156,6 +163,8 @@ final class HermesStore {
     func disconnect(forgetCredentials: Bool = false) async {
         connectionAttempt = UUID()
         navigationAttempt = UUID()
+        listRequestID = UUID()
+        isLoadingThreads = false
         reconnectTask?.cancel()
         refreshTask?.cancel()
         reconnectTask = nil
@@ -208,7 +217,7 @@ final class HermesStore {
         try loadVerifiedDrafts()
         connection = .connected
         if let id = selectedThreadID { try await resume(id) }
-        try await loadThreads(query: "")
+        await refreshThreads(query: threadSearchQuery)
         await loadCatalogs()
     }
 
@@ -252,8 +261,17 @@ final class HermesStore {
         isRestoringDraft = true
         defer { isRestoringDraft = false }
         selectedThreadID = nil
+        selectedThreadTitle = nil
         messages = []
         threads = []
+        listRequestID = UUID()
+        isLoadingThreads = false
+        hasLoadedThreads = false
+        threadSearchQuery = ""
+        threadListError = nil
+        commandWarning = nil
+        commandCatalogError = nil
+        modelCatalogError = nil
         drafts = [:]
         cursors = [:]
         interactions = []

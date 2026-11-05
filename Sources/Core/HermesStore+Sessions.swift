@@ -2,25 +2,65 @@ import Foundation
 
 extension HermesStore {
     func refreshThreads(query: String = "") async {
-        lastError = nil
-        do { try await loadThreads(query: query) } catch { report(error) }
+        do { try await loadThreads(query: query) } catch { /* The current request owns threadListError. */ }
     }
 
     func loadThreads(query: String) async throws {
+        try await loadThreads(query: query) { scope in
+            try await self.transport.call("session.list", params: ["scope": .string(scope), "limit": .integer(200), "include_hidden": .bool(false)])
+        }
+    }
+
+    func loadThreads(query: String, fetch: (String) async throws -> JSONValue) async throws {
         isLoadingThreads = true
+        hasLoadedThreads = false
+        threadSearchQuery = query
+        threadListError = nil
         let requestID = UUID()
         listRequestID = requestID
         defer { if listRequestID == requestID { isLoadingThreads = false } }
-        var params: [String: JSONValue] = ["scope": .string("stored"), "limit": .integer(200), "include_hidden": .bool(false)]
-        if !query.isEmpty { params["title"] = .string(query) }
-        let result = try await transport.call("session.list", params: params)
-        guard listRequestID == requestID else { return }
-        threads = (result["sessions"].array ?? []).compactMap { row in
-            guard let id = row["session_id"].string ?? row["id"].string else { return nil }
-            return HermesThread(id: id, title: row["title"].string ?? "Untitled conversation",
+        do {
+            // Stored is resumable history; canonical open conversations are a separate live feed.
+            let stored = try Self.threadRows(try await fetch("stored"), scope: "stored")
+            guard listRequestID == requestID else { return }
+            let live = try Self.threadRows(try await fetch("live"), scope: "live")
+            guard listRequestID == requestID else { return }
+            let allThreads = Self.mergeThreads(stored: stored, live: live, query: "")
+            if let selected = allThreads.first(where: { $0.id == selectedThreadID }) { selectedThreadTitle = selected.title }
+            threads = Self.mergeThreads(stored: stored, live: live, query: query)
+            hasLoadedThreads = true
+        } catch {
+            guard listRequestID == requestID else { return }
+            if !(error is CancellationError) { threadListError = error.localizedDescription }
+            throw error
+        }
+    }
+
+    nonisolated static func threadRows(_ result: JSONValue, scope: String) throws -> [HermesThread] {
+        guard result["scope"].string == scope, let rows = result["sessions"].array else {
+            throw GatewayError.invalidResponse("Hermes returned an invalid \(scope) conversation list. Try loading threads again.")
+        }
+        return try rows.map { row in
+            guard let id = row["session_id"].string ?? row["id"].string, !id.isEmpty else {
+                throw GatewayError.invalidResponse("Hermes returned a conversation without an identity. Try loading threads again.")
+            }
+            let title = row["title"].string ?? ""
+            return HermesThread(id: id, title: title.isEmpty ? "Untitled conversation" : title,
                 preview: row["preview"].string ?? "", updatedAt: Self.date(row.object?["updated_at"] ?? row["started_at"]),
                 messageCount: Int(row["message_count"].int ?? 0), isRunning: row["running"].bool ?? false,
                 isArchived: row["archived"].bool ?? false)
+        }
+    }
+
+    nonisolated static func mergeThreads(stored: [HermesThread], live: [HermesThread], query: String) -> [HermesThread] {
+        var byID: [String: HermesThread] = [:]
+        for thread in stored + live { byID[thread.id] = thread }
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        return byID.values.filter {
+            query.isEmpty || $0.title.localizedStandardContains(query) || $0.preview.localizedStandardContains(query)
+        }.sorted {
+            let lhs = $0.updatedAt ?? .distantPast, rhs = $1.updatedAt ?? .distantPast
+            return lhs == rhs ? $0.id < $1.id : lhs > rhs
         }
     }
 
@@ -91,6 +131,15 @@ extension HermesStore {
         for request in snapshot["open_requests"].array ?? [] { restoreServerRequest(request, sessionID: id) }
         refreshPendingInteraction()
         applyInfo(snapshot["info"])
+        let existing = threads.first { $0.id == id }
+        let info = snapshot["info"]
+        let title = info["title"].string.flatMap { $0.isEmpty ? nil : $0 } ?? existing?.title ?? "Untitled conversation"
+        selectedThreadTitle = title
+        let thread = HermesThread(id: id, title: title, preview: existing?.preview ?? "",
+            updatedAt: Self.date(info.object?["last_active_at"] ?? info["started_at"]) ?? existing?.updatedAt,
+            messageCount: Int(snapshot["message_count"].int ?? Int64(messages.count)), isRunning: isStreaming,
+            isArchived: existing?.isArchived ?? false)
+        threads = Self.mergeThreads(stored: threads, live: [thread], query: "")
     }
 
     func createThread() async {
@@ -110,20 +159,20 @@ extension HermesStore {
             let buffered = bufferedEvents
             bufferedEvents = []
             for event in buffered { applyEvent(event) }
-            try await loadThreads(query: "")
+            await refreshThreads(query: threadSearchQuery)
             await loadCatalogs()
         } catch { report(error) }
     }
 
     func renameThread(_ id: String, title: String) async {
         lastError = nil
-        do { try await mutate(id, operation: "rename", payload: ["title": .string(title)], requiresGeneration: false); try await loadThreads(query: "") }
+        do { try await mutate(id, operation: "rename", payload: ["title": .string(title)], requiresGeneration: false); await refreshThreads(query: threadSearchQuery) }
         catch { report(error) }
     }
 
     func archiveThread(_ id: String) async {
         lastError = nil
-        do { try await mutate(id, operation: "archive", payload: ["archived": .bool(true)], requiresGeneration: false); try await loadThreads(query: "") }
+        do { try await mutate(id, operation: "archive", payload: ["archived": .bool(true)], requiresGeneration: false); await refreshThreads(query: threadSearchQuery) }
         catch { report(error) }
     }
 

@@ -35,6 +35,7 @@ extension HermesStore {
         let turn = event["admission_id"].string ?? "generation-\(cursor.generation)"
         let streamKey = "stream:\(id):\(turn)"
         let streamID = "\(streamKey):\(streamSegments[streamKey, default: 0])"
+        let activityID = "activity:\(id):\(cursor.replayEpoch ?? ""):\(event["seq"].identifier ?? "\(cursor.generation):\(type)")"
         switch type {
         case "message.start":
             isStreaming = true
@@ -75,6 +76,7 @@ extension HermesStore {
             settleSubmission(payload["persisted_turn"], admissionID: event["admission_id"].string)
             scheduleRefresh()
         case "tool.start", "tool.generating":
+            sealSegment(streamID, key: streamKey)
             let toolID = payload["tool_id"].identifier ?? "\(turn):\(payload["name"].string ?? "tool")"
             let messageID = "tool:\(id):\(toolID)"
             if !messages.contains(where: { $0.id == messageID }) {
@@ -102,11 +104,36 @@ extension HermesStore {
             if let requestID = payload["id"].identifier { interactions.removeAll { $0.id == "request:\(requestID)" } }
             refreshPendingInteraction()
         case "session.title":
-            if let title = payload["title"].string, let index = threads.firstIndex(where: { $0.id == id }) { threads[index].title = title }
+            if let title = payload["title"].string {
+                selectedThreadTitle = title
+                if let index = threads.firstIndex(where: { $0.id == id }) { threads[index].title = title }
+            }
+        case "session.info":
+            let previousModel = selectedModel
+            applyInfo(payload)
+            if !previousModel.isEmpty, !selectedModel.isEmpty, previousModel != selectedModel {
+                let modelName = payload["model"].string ?? selectedModel
+                let effort = selectedEffort.isEmpty ? "" : " · \(selectedEffort)"
+                appendActivity(id: activityID, text: "Model changed to \(modelName)\(effort)")
+            }
+        case "agent.print":
+            if let text = payload["text"].string, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                appendActivity(id: activityID, text: text)
+            }
         case "status.update":
             if let running = payload["running"].bool { isStreaming = running }
+            // The gateway tags actual compaction progress; never guess from arbitrary prose.
+            if let kind = payload["kind"].string, ["compacting", "compacted", "compressing"].contains(kind),
+               let text = payload["text"].string, !text.isEmpty {
+                appendActivity(id: activityID, text: text)
+            }
         default: break // Additive gateway events are safe to ignore; cursor has advanced.
         }
+    }
+
+    func appendActivity(id: String, text: String) {
+        guard !messages.contains(where: { $0.id == id }) else { return }
+        messages.append(ChatMessage(id: id, role: .system, text: text, createdAt: Date()))
     }
 
     func assistantIndex(id: String) -> Int {
@@ -144,7 +171,7 @@ extension HermesStore {
                 try await Task.sleep(for: .milliseconds(250))
                 guard let self, self.connection == .connected else { return }
                 if resumeSession, let id = self.selectedThreadID, !self.isLoadingMessages { try await self.resume(id) }
-                try await self.loadThreads(query: "")
+                await self.refreshThreads(query: self.threadSearchQuery)
             } catch is CancellationError { return }
             catch { self?.report(error) }
         }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ConversationView: View {
     @Bindable var store: HermesStore
+    var showsConnectionStatus = true
     @State private var showsCommands = false
     @State private var showsSession = false
     @State private var showsRename = false
@@ -17,12 +18,13 @@ struct ConversationView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 24) {
-                    ConnectionStatusView(connection: store.connection, isStreaming: store.isStreaming)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if showsConnectionStatus {
+                        ConnectionStatusView(connection: store.connection, isStreaming: store.isStreaming)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
                     if let error = store.lastError {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label(error, systemImage: "exclamationmark.triangle")
-                                .font(.subheadline)
+                        DisclosureGroup {
+                            Text(error).font(.subheadline).foregroundStyle(.secondary).textSelection(.enabled)
                             HStack {
                                 if store.connection != .connected {
                                     Button("Reconnect", systemImage: "arrow.clockwise") { Task { await store.restoreConnection() } }
@@ -30,9 +32,12 @@ struct ConversationView: View {
                                 Button("Dismiss") { store.lastError = nil }
                             }
                             .frame(minHeight: 44)
+                        } label: {
+                            Label("Conversation Needs Attention", systemImage: "exclamationmark.circle")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
-                        .padding(12)
-                        .background(.quaternary, in: .rect(cornerRadius: 12))
+                        .padding(.vertical, 4)
                     }
                     if store.connection != .connected, store.isStreaming {
                         Label("Connection interrupted. Reconnect to check the response before sending again.", systemImage: "wifi.slash")
@@ -97,7 +102,7 @@ struct ConversationView: View {
         .safeAreaBar(edge: .bottom) {
             ComposerView(store: store) { showsCommands = true }
         }
-        .navigationTitle(thread?.title.isEmpty == false ? thread?.title ?? "Conversation" : "Conversation")
+        .navigationTitle(threadTitle)
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.openURL, OpenURLAction { url in
             MessageAttachment.safeExternalURL(url.absoluteString) == nil ? .discarded : .systemAction
@@ -110,7 +115,7 @@ struct ConversationView: View {
                 Button("Commands", systemImage: "slash.circle") { showsCommands = true }
                 if store.supportsThreadRename {
                     Button("Rename Thread", systemImage: "pencil") {
-                        newTitle = thread?.title ?? ""
+                        newTitle = threadTitle == "New Thread" ? "" : threadTitle
                         showsRename = true
                     }
                 }
@@ -138,6 +143,11 @@ struct ConversationView: View {
         } message: {
             Text("This thread will be removed from the active thread list. Its conversation stays on your Hermes server.")
         }
+    }
+
+    private var threadTitle: String {
+        let title = (store.selectedThreadTitle ?? thread?.title ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty || title == "Untitled conversation" ? "New Thread" : title
     }
 
     private func contentChanged(_ proxy: ScrollViewProxy) {

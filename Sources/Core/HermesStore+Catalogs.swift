@@ -2,26 +2,23 @@ import Foundation
 
 extension HermesStore {
     func loadCatalogs() async {
+        let attempt = connectionAttempt
+        let sessionID = selectedThreadID
+        commandCatalogError = nil
+        modelCatalogError = nil
         var params: [String: JSONValue] = [:]
         if let id = selectedThreadID { params["session_id"] = .string(id) }
         do {
             let result = try await transport.call("commands.catalog", params: params)
-            var catalog: [String: GatewayCommand] = [:]
-            for category in result["categories"].array ?? [] {
-                for pair in category["pairs"].array ?? [] {
-                    guard let values = pair.array, let name = values.first?.string else { continue }
-                    catalog[name] = GatewayCommand(name: name, description: values.dropFirst().first?.string ?? "", category: category["name"].string ?? "Commands")
-                }
-            }
-            for pair in result["pairs"].array ?? [] {
-                guard let values = pair.array, let name = values.first?.string, catalog[name] == nil else { continue }
-                catalog[name] = GatewayCommand(name: name, description: values.dropFirst().first?.string ?? "")
-            }
-            commands = catalog.values.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
-            if let warning = result["warning"].string, !warning.isEmpty { lastError = warning }
-        } catch { report(error) }
+            guard connectionAttempt == attempt, selectedThreadID == sessionID else { return }
+            installCommandCatalog(result)
+        } catch {
+            guard connectionAttempt == attempt, selectedThreadID == sessionID else { return }
+            if !(error is CancellationError) { commandCatalogError = error.localizedDescription }
+        }
         do {
             let result = try await transport.call("model.options", params: params.merging(["explicit_only": .bool(false), "include_unconfigured": .bool(false), "refresh": .bool(false)]) { _, new in new })
+            guard connectionAttempt == attempt, selectedThreadID == sessionID else { return }
             models = (result["providers"].array ?? []).flatMap { provider -> [ModelOption] in
                 guard provider["authenticated"].bool != false, let slug = provider["slug"].string else { return [] }
                 return (provider["models"].array ?? []).compactMap { value in
@@ -34,7 +31,26 @@ extension HermesStore {
                 }
             }
             if let current = result["model"].string, let provider = result["provider"].string { selectedModel = "\(provider)::\(current)" }
-        } catch { report(error) }
+        } catch {
+            guard connectionAttempt == attempt, selectedThreadID == sessionID else { return }
+            if !(error is CancellationError) { modelCatalogError = error.localizedDescription }
+        }
+    }
+
+    func installCommandCatalog(_ result: JSONValue) {
+        var catalog: [String: GatewayCommand] = [:]
+        for category in result["categories"].array ?? [] {
+            for pair in category["pairs"].array ?? [] {
+                guard let values = pair.array, let name = values.first?.string else { continue }
+                catalog[name] = GatewayCommand(name: name, description: values.dropFirst().first?.string ?? "", category: category["name"].string ?? "Commands")
+            }
+        }
+        for pair in result["pairs"].array ?? [] {
+            guard let values = pair.array, let name = values.first?.string, catalog[name] == nil else { continue }
+            catalog[name] = GatewayCommand(name: name, description: values.dropFirst().first?.string ?? "")
+        }
+        commands = catalog.values.sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        commandWarning = result["warning"].string.flatMap { $0.isEmpty ? nil : $0 }
     }
 
     func applyInfo(_ info: JSONValue) {

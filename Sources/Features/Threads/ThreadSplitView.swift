@@ -3,12 +3,14 @@ import SwiftUI
 struct ThreadSplitView: View {
     @Bindable var store: HermesStore
     @Binding var showsSettings: Bool
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
     @State private var selection: String?
     @State private var search = ""
     @State private var isCreating = false
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
             List(selection: $selection) {
                 Section {
                     ConnectionStatusView(connection: store.connection)
@@ -19,13 +21,17 @@ struct ThreadSplitView: View {
                         }
                         .frame(minHeight: 44)
                     }
-                    if let error = store.lastError {
-                        Label(error, systemImage: "exclamationmark.triangle")
-                            .font(.subheadline)
+                    if let error = store.threadListError {
+                        Label("Couldn’t Refresh Threads", systemImage: "exclamationmark.triangle")
+                            .font(.subheadline.weight(.semibold))
+                        if !store.threads.isEmpty {
+                            Text("Your previous list is still available.").font(.subheadline).foregroundStyle(.secondary)
+                        }
+                        DisclosureGroup("Details") { Text(error).font(.subheadline).textSelection(.enabled) }
                         Button("Retry Loading Threads", systemImage: "arrow.clockwise") {
                             Task { await store.refreshThreads(query: search) }
                         }
-                        .disabled(store.connection != .connected)
+                        .disabled(store.connection != .connected || store.isLoadingThreads)
                     }
                 }
                 Section {
@@ -36,7 +42,7 @@ struct ThreadSplitView: View {
                 }
             }
             .overlay {
-                if store.threads.isEmpty, store.connection == .connected, !store.isLoadingThreads, store.lastError == nil {
+                if store.threads.isEmpty, store.hasLoadedThreads, store.threadSearchQuery == search, store.connection == .connected, !store.isLoadingThreads, store.threadListError == nil {
                     ContentUnavailableView {
                         Label(search.isEmpty ? "No Threads Yet" : "No Matching Threads", systemImage: "bubble.left.and.bubble.right")
                     } description: {
@@ -68,7 +74,7 @@ struct ThreadSplitView: View {
         } detail: {
             NavigationStack {
                 if store.selectedThreadID != nil {
-                    ConversationView(store: store)
+                    ConversationView(store: store, showsConnectionStatus: horizontalSizeClass != .regular || columnVisibility == .detailOnly)
                 } else {
                     ContentUnavailableView {
                         Label("Your Conversations", systemImage: "bubble.left.and.bubble.right")
