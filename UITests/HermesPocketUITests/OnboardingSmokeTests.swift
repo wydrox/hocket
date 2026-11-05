@@ -214,7 +214,10 @@ final class OnboardingSmokeTests: XCTestCase {
         let form = app.collectionViews.firstMatch.frame.intersection(app.frame)
         let top = max(form.minY, app.navigationBars.firstMatch.frame.maxY)
         let bottom = app.keyboards.firstMatch.exists ? min(form.maxY, app.keyboards.firstMatch.frame.minY) : form.maxY
-        return CGRect(x: form.minX, y: top + 8, width: form.width, height: max(0, bottom - top - 16))
+        // Test actual visible bounds. An artificial inset made a fully visible,
+        // hittable row 1.3 pt above that inset trigger alternating scrolls on Duo.
+        // Drag endpoints already keep their own 20% margin inside this viewport.
+        return CGRect(x: form.minX, y: top, width: form.width, height: max(0, bottom - top))
     }
 
     private func attachScreenshot(_ app: XCUIApplication, name: String) {
