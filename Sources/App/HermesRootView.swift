@@ -19,6 +19,7 @@ struct HermesRootView: View {
         }
         .task { await store.restoreConnection() }
         .onChange(of: scenePhase) { _, phase in
+            if phase != .active { store.flushDrafts() }
             if phase == .active, store.hasCredentials, store.connection == .disconnected {
                 Task { await store.restoreConnection() }
             }

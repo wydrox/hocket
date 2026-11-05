@@ -14,9 +14,9 @@ The product thesis is a quiet messenger that keeps the conversation central and 
 | 2 — native component map | done, adapted | [component-map.md](component-map.md); SwiftUI/system components replace the web-specific shadcn stage. |
 | 3 — visual direction | done | [visual-direction.md](visual-direction.md); semantic palette and system text styles. |
 | Gate B — visual approval | done | Same explicit user preapproval; the ASCII layouts record the concrete decision. |
-| 4 — implementation | todo | Owned by implementation agent. This folder contains design artifacts only. |
-| 5 — runtime and visual verification | todo | [verify-report.md](verify-report.md) defines required evidence; no runtime acceptance claimed. |
-| Xcode Cloud build / TestFlight | todo | Release agent must verify separately; product specs are not distribution proof. |
+| 4 — implementation | done, validation pending | Native source in `Sources/`, protocol tests in `Tests/`. Independent source review issues corrected. |
+| 5 — runtime and visual verification | in progress | Cloud tests and onboarding screenshot suite; [verify-report.md](verify-report.md) tracks evidence. Authenticated chat/device acceptance is pending. |
+| Xcode Cloud build / TestFlight | blocked | Apple account onboarding required; [release status](../../release-status.md) records the exact state. |
 
 ## Scope and priority
 

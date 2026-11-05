@@ -66,12 +66,26 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/HermesPocket.app/HermesPocket"
         BUNDLE_LOADER: "$(TEST_HOST)"
+  HermesPocketUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests/HermesPocketUITests
+    dependencies:
+      - target: HermesPocket
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wydrox.hermespocket.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+        TEST_TARGET_NAME: HermesPocket
 schemes:
   HermesPocket:
     build:
       targets:
         HermesPocket: all
         HermesPocketTests: [test]
+        HermesPocketUITests: [test]
     run:
       config: Debug
     test:
@@ -81,6 +95,8 @@ schemes:
         - name: HermesPocketTests
           parallelizable: false
           randomExecutionOrder: true
+        - name: HermesPocketUITests
+          parallelizable: false
     profile:
       config: Release
     analyze:

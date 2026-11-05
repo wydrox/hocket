@@ -6,8 +6,10 @@ extension HermesStore {
         lastError = nil
         let draft = composerText
         let selectedAttachments = attachments
+        let sentScope = draftScope
         guard !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !selectedAttachments.isEmpty else { return }
         isSending = true
+        saveDraft()
         defer { isSending = false }
         do {
             guard let sessionID = selectedThreadID, let credentials else { throw GatewayError.missingSession }
@@ -17,9 +19,7 @@ extension HermesStore {
                 candidate.profileID == profileID && candidate.accountID == accountID && candidate.text == text && candidate.attachments == selectedAttachments &&
                 messages.contains(where: { $0.id == candidate.id && $0.status == .failed }) }) {
                 try await submit(existing)
-                if selectedThreadID == sessionID, composerText == draft, attachments == selectedAttachments {
-                    composerText = ""; attachments = []; saveDraft()
-                }
+                clearAcknowledgedDraft(scope: sentScope, sessionID: sessionID, text: draft, sentAttachments: selectedAttachments)
                 return
             }
             let submission = PendingSubmission(id: UUID().uuidString, endpoint: credentials.endpoint, profileID: profileID,
@@ -30,11 +30,7 @@ extension HermesStore {
             catch { submissions.removeAll { $0.id == submission.id }; throw error }
             messages.append(ChatMessage(id: submission.id, role: .user, text: draft, status: .pending, createdAt: submission.createdAt))
             try await submit(submission)
-            if selectedThreadID == sessionID, composerText == draft, attachments == selectedAttachments {
-                composerText = ""
-                attachments = []
-                saveDraft()
-            }
+            clearAcknowledgedDraft(scope: sentScope, sessionID: sessionID, text: draft, sentAttachments: selectedAttachments)
         } catch { report(error) }
     }
 
@@ -46,7 +42,14 @@ extension HermesStore {
         do {
             guard let submission = submissions.first(where: { $0.id == id }), submission.profileID == profileID,
                   submission.endpoint == credentials?.endpoint, submission.accountID == accountID else { throw GatewayError.invalidResponse("This message belongs to another saved Hermes connection.") }
+            let sentScope = draftScope
             try await submit(submission)
+            if let draft = drafts[submission.sessionID], draft.attachments == submission.attachments {
+                let submittedText = ([draft.text] + draft.attachments.compactMap(\.referenceText)).filter { !$0.isEmpty }.joined(separator: "\n\n")
+                if submittedText == submission.text {
+                    clearAcknowledgedDraft(scope: sentScope, sessionID: submission.sessionID, text: draft.text, sentAttachments: draft.attachments)
+                }
+            }
         } catch { report(error) }
     }
 
@@ -87,6 +90,7 @@ extension HermesStore {
         defer { isUploadingAttachment = false }
         do {
             guard let id = selectedThreadID else { throw GatewayError.missingSession }
+            let uploadScope = draftScope
             guard attachments.count < 10 else { throw GatewayError.invalidResponse("Attach at most 10 files to one message.") }
             guard !data.isEmpty, data.count <= 16 * 1024 * 1024 else { throw GatewayError.invalidResponse("Choose a nonempty file no larger than 16 MiB.") }
             let supportedImages = ["image/png", "image/jpeg", "image/gif", "image/webp"]
@@ -101,11 +105,12 @@ extension HermesStore {
                 result = try await transport.call("file.attach", params: ["session_id": .string(id), "data_url": .string("data:\(mimeType);base64,\(data.base64EncodedString())"), "name": .string(name)], timeout: .seconds(60))
             }
             guard result["attached"].bool == true, let path = result["path"].string else { throw GatewayError.invalidResponse("Hermes did not confirm attachment staging.") }
+            guard uploadScope != nil, uploadScope == draftScope else { throw GatewayError.invalidResponse("The attachment was staged for the previous connection. Select it again in the current account.") }
             let attachment = ChatAttachment(id: UUID().uuidString, name: name, mimeType: result["mime"].string ?? mimeType,
                 byteCount: data.count, isImage: isImage, remotePath: path, referenceText: result["ref_text"].string)
             if !isImage, attachment.referenceText == nil { throw GatewayError.invalidResponse("Hermes did not return the staged file reference.") }
             if selectedThreadID == id { attachments.append(attachment); saveDraft() }
-            else { var draft = drafts[id] ?? (text: "", attachments: []); draft.attachments.append(attachment); drafts[id] = draft }
+            else { var draft = drafts[id] ?? (text: "", attachments: []); draft.attachments.append(attachment); drafts[id] = draft; flushDrafts() }
         } catch { report(error) }
     }
 

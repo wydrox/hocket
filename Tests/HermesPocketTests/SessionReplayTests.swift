@@ -7,8 +7,10 @@ struct SessionReplayTests {
         var cursor = SessionCursor()
         cursor.installSnapshot(.object(["replay_epoch": .string("session-epoch"), "last_sequence": .integer(10), "revision": .integer(7), "execution_generation": .integer(2), "authority_epoch": .integer(1)]))
         let event: JSONValue = .object(["replay_epoch": .string("session-epoch"), "seq": .integer(11), "execution_generation": .integer(3), "authority_epoch": .integer(1)])
-        #expect(cursor.accept(event))
-        #expect(!cursor.accept(event))
+        let accepted = cursor.accept(event)
+        let replayAccepted = cursor.accept(event)
+        #expect(accepted)
+        #expect(!replayAccepted)
         #expect(cursor.sequence == 11)
         #expect(cursor.generation == 3)
         #expect(cursor.revision == 7)
@@ -16,8 +18,10 @@ struct SessionReplayTests {
 
     @Test func changedEpochRequiresSnapshotInsteadOfMixingStreams() {
         var cursor = SessionCursor(replayEpoch: "old", sequence: 50, authorityEpoch: .integer(1))
-        #expect(!cursor.accept(.object(["replay_epoch": .string("new"), "seq": .integer(51)])))
-        #expect(!cursor.accept(.object(["replay_epoch": .string("old"), "seq": .integer(51), "authority_epoch": .integer(2)])))
+        let changedReplayAccepted = cursor.accept(.object(["replay_epoch": .string("new"), "seq": .integer(51)]))
+        let changedAuthorityAccepted = cursor.accept(.object(["replay_epoch": .string("old"), "seq": .integer(51), "authority_epoch": .integer(2)]))
+        #expect(!changedReplayAccepted)
+        #expect(!changedAuthorityAccepted)
         #expect(cursor.sequence == 50)
     }
 

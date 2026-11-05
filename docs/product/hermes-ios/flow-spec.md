@@ -57,7 +57,7 @@ Shared states: “Loading…” is temporary with a native progress indicator; a
 
 ### 1 — Connect to Hermes
 
-Purpose: validate the user's actual service. Primary action: **Connect**, below a single-column form. Hierarchy: “Connect to Hermes”; “Use the address and access token for your Hermes server.”; persistent labels **Server Address** and **Access Token**; secure token field; Connect; supporting text “Messages and attachments are sent to this server. Your token is stored in this device’s Keychain.” Use token storage wording only once implemented.
+Purpose: validate the user's actual service. Primary action: **Sign In**, below a single-column form with **Server Address**, **Username**, and **Password**. Native Basic-provider PKCE exchanges credentials for Keychain-stored access and refresh tokens. **Advanced Connection** offers **Use an Access Token** and changes the primary action to **Connect**. Copy: “Messages and attachments are sent to this server. Your sign-in token is stored in this device’s Keychain.” Passwords are never persisted.
 
 Defaults: saved nonsecret endpoint only. Never reveal a stored token. Paste uses explicit user action; no clipboard polling. URL keyboard, autocorrection/capitalization disabled; HTTPS required for saved production endpoints. Do not add a global ATS exception. Explicit local-development access, if needed, must be separately scoped and documented.
 

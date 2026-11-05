@@ -5,7 +5,7 @@ import Observation
 final class HermesStore {
     var endpoint = ""
     var lastError: String?
-    var composerText = ""
+    var composerText = "" { didSet { composerDidChange() } }
     var selectedModel = ""
     var selectedEffort = ""
     var selectedServiceTier = "normal"
@@ -20,7 +20,7 @@ final class HermesStore {
     var selectedThreadID: String?
     var messages: [ChatMessage] = []
     var isStreaming = false
-    var attachments: [ChatAttachment] = []
+    var attachments: [ChatAttachment] = [] { didSet { composerDidChange() } }
     var commands: [GatewayCommand] = []
     var models: [ModelOption] = []
     var pendingInteraction: PendingInteraction?
@@ -48,6 +48,11 @@ final class HermesStore {
     @ObservationIgnored let transport = GatewayTransport()
     @ObservationIgnored let keychain = KeychainCredentials()
     @ObservationIgnored let journal = SubmissionJournal()
+    @ObservationIgnored let draftJournal: DraftJournal
+    @ObservationIgnored var draftScope: DraftScope?
+    @ObservationIgnored var activeDraftSessionID: String?
+    @ObservationIgnored var isRestoringDraft = false
+    @ObservationIgnored var draftSaveTask: Task<Void, Never>?
     @ObservationIgnored var credentials: GatewayCredentials?
     @ObservationIgnored var profileID = ""
     @ObservationIgnored var accountID = ""
@@ -66,7 +71,8 @@ final class HermesStore {
     @ObservationIgnored var streamSegments: [String: Int] = [:]
     @ObservationIgnored var sealedSegments: [String: String] = [:]
 
-    init() {
+    init(draftJournal: DraftJournal = DraftJournal()) {
+        self.draftJournal = draftJournal
         transport.onEvent = { [weak self] event in self?.receiveEvent(event) }
         transport.onServerRequest = { [weak self] request in self?.receiveServerRequest(request) }
         transport.onDisconnect = { [weak self] message in
@@ -160,6 +166,7 @@ final class HermesStore {
         isStreaming = false
         if forgetCredentials {
             do {
+                try forgetCurrentDrafts()
                 try keychain.delete()
                 credentials = nil
                 hasCredentials = false
@@ -198,6 +205,7 @@ final class HermesStore {
         if !profileID.isEmpty, profileID != newProfile { clearSessionState() }
         accountID = active.accountID ?? ""
         profileID = newProfile
+        try loadVerifiedDrafts()
         connection = .connected
         if let id = selectedThreadID { try await resume(id) }
         try await loadThreads(query: "")
@@ -237,12 +245,12 @@ final class HermesStore {
         } else { lastError = error.localizedDescription }
     }
 
-    func saveDraft() {
-        guard let id = selectedThreadID else { return }
-        drafts[id] = (composerText, attachments)
-    }
-
     func clearSessionState() {
+        flushDrafts()
+        draftScope = nil
+        activeDraftSessionID = nil
+        isRestoringDraft = true
+        defer { isRestoringDraft = false }
         selectedThreadID = nil
         messages = []
         threads = []

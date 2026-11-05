@@ -34,8 +34,6 @@ extension HermesStore {
                 _ = try await transport.call("session.detach", params: ["session_id": .string(oldID), "subscription_id": .string(subscription)])
             }
             try await resume(id)
-            composerText = drafts[id]?.text ?? ""
-            attachments = drafts[id]?.attachments ?? []
             await loadCatalogs()
         } catch { report(error) }
     }
@@ -70,6 +68,7 @@ extension HermesStore {
         guard let id = snapshot["session_id"].string, snapshot["info"]["desktop_protocol"].string == "hermes-gateway-v1" else {
             throw GatewayError.unsupportedAuthority
         }
+        activateDraft(sessionID: id)
         selectedThreadID = id
         var cursor = cursors[id] ?? SessionCursor()
         cursor.installSnapshot(snapshot)
@@ -108,8 +107,6 @@ extension HermesStore {
             let snapshot = try await transport.call("session.create", params: ["request_id": .string(requestID), "source": .string("gui")])
             try installSnapshot(snapshot)
             createRequestID = nil
-            composerText = ""
-            attachments = []
             let buffered = bufferedEvents
             bufferedEvents = []
             for event in buffered { applyEvent(event) }
