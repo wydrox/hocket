@@ -64,7 +64,12 @@ final class OnboardingSmokeTests: XCTestCase {
         let useToken = app.switches["Use an Access Token"]
         reveal(useToken, in: app)
         XCTAssertTrue(useToken.waitForExistence(timeout: 10))
-        useToken.tap()
+        // SwiftUI exposes both the whole labeled row and its nested switch.
+        // Tapping the row's center can hit only its label; use the actual control.
+        let toggleControl = useToken.switches.firstMatch
+        if toggleControl.exists { toggleControl.tap() }
+        else { useToken.tap() }
+        XCTAssertEqual(useToken.value as? String, "1", "The access-token switch must be enabled before its field is located.")
         let token = secureField("Access Token", in: app)
         // Removing the username/password rows can move this new row above the
         // current viewport. Start toward the top; reveal also follows its frame.
