@@ -7,19 +7,36 @@ Verified 2026-11-05. These are observed release states, not planned outcomes.
 | Repository | Private [wydrox/hocket](https://github.com/wydrox/hocket), default branch `main` |
 | App | `hocket: Hermes Agent`, Apple ID `6831068473`; device display name `hocket` |
 | Bundle / team | `com.wydrox.hocket` / `7S3F9767BM` |
-| Version | **1.0.0 (2)**, iOS/iPadOS 27+ |
-| Released source | `592f1d875edfaeb7f984a6234136a2ca6a5940a4` |
-| Xcode Cloud | Build 2 `9e86f6b4-b959-4e27-a03d-4a0d4e610127`, **SUCCEEDED** at 10:55:39 UTC |
-| Cloud tests | **34 passed**: 31 unit tests and 3 onboarding UI tests, iPhone 18 Pro / iOS 27.2 |
+| Version | **1.0.1 (4)**, iOS/iPadOS 27+ |
+| Released source | `bd4a7c8700d69b92b11ca2210fc693ed1fe042ae` |
+| Xcode Cloud | Build 4 `8ebfecc2-435f-4ef2-bad4-6a76892d90b1`, **SUCCEEDED** at 11:44:28 UTC |
+| Cloud tests | **41 passed**: 36 unit tests and 5 onboarding UI tests, iPhone 18 Pro / iOS 27.2 |
 | Archive and signing | **SUCCEEDED** in Xcode Cloud, Xcode 27.2 (`27B52`) |
-| Apple processing | **VALID**, internal-only build `ffcb86f8-6a0a-40c0-bdc5-63620097147d` |
-| TestFlight distribution | Cloud post-action **SUCCEEDED**; build 2 read back in `hocket Internal` |
-| Tester | Requesting owner's account enrolled; current state **INSTALLED** |
-| Device installation | App Store Connect reports 1.0.0 (2) installed on iPad Pro 11-inch (M4), iOS 27.0 |
+| Apple processing | **VALID**, internal-only build `146ddd66-1654-4d13-a5a6-b0a92c642ffd` |
+| TestFlight distribution | Cloud post-action **SUCCEEDED**; build 4 read back in `hocket Internal`; beta state **IN_BETA_TESTING** |
+| Tester | Requesting owner's account remains enrolled in the existing internal group |
+| Device installation | Previously verified: 1.0.0 (2) on iPad Pro 11-inch (M4), iOS 27.0. Installation of 1.0.1 (4) is not yet verified. |
+| Local checkout | `/Users/rafalw/Dev/hocket`, connected to `wydrox/hocket` |
 | Local builds/tests | **NOT_RUN**; all compilation and test execution took place in the cloud |
 | Assistant-operated device walkthrough / live authenticated chat / VoiceOver | **NOT_RUN** |
 
-[Cloud build and results](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/xcode-cloud/products/6df352ca-bec7-4a8a-b369-a2bb039dc3d9/builds/9e86f6b4-b959-4e27-a03d-4a0d4e610127/summary) · [TestFlight group](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/apps/6831068473/testflight/groups/88f6a4c3-af5f-46dc-acb3-9f0a83b71a6e).
+[Cloud build and results](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/xcode-cloud/products/6df352ca-bec7-4a8a-b369-a2bb039dc3d9/builds/8ebfecc2-435f-4ef2-bad4-6a76892d90b1/summary) · [TestFlight group](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/apps/6831068473/testflight/groups/88f6a4c3-af5f-46dc-acb3-9f0a83b71a6e).
+
+## Onboarding update
+
+Version 1.0.1 adds an optional three-step **Set Up Hermes** guide, also available
+under **Settings → Help and Privacy**, and a credential-free **Check Server**
+action. It explains the actual Desktop Web access controls, their Nous sign-in
+limitation, private-network access and the required Hermes password credentials.
+The guide preserves the entered address and supports the largest Dynamic Type.
+
+Build 3 compiled and archived but failed one UI harness assertion (40/41 passed):
+the test inspected the covered connection Form while trying to scroll the guide
+sheet. Build 4 scopes gestures and visibility checks to the presented guide and
+passes all 41 tests. Build 3 was **not** added to the internal group. The group
+contains builds 2 and 4. See the [onboarding verification](product/connection-onboarding/verify-report.md)
+and its ten unmodified cloud screenshots. No local compilation or simulator run
+was used to validate this update.
 
 ## Pipeline
 
@@ -56,8 +73,9 @@ login. The gateway's loopback port is ephemeral: the Serve route needs resync
 after a gateway restart. See [connection deployment](mobile-connection-plan.md).
 No real Hermes password or token was retrieved or embedded in the app.
 
-Onboarding screenshots from the actual cloud test result are checked in with the
-[verification record](product/hermes-ios/verify-report.md). TestFlight availability
+Onboarding screenshots from the actual cloud test results are checked in with the
+[first beta record](product/hermes-ios/verify-report.md) and the
+[setup guide record](product/connection-onboarding/verify-report.md). TestFlight availability
 does not establish a physical-device launch or authenticated end-to-end chat.
 Voice entry uses system keyboard dictation. Background push notifications and a
 phone-side Hermes runtime are outside this first beta.
