@@ -209,7 +209,7 @@ final class OnboardingSmokeTests: XCTestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let form = app.collectionViews.firstMatch
+        let form = activeForm(in: app)
         XCTAssertTrue(form.waitForExistence(timeout: 10), file: file, line: line)
         var nextDirection = direction
         var previousContent: String?
@@ -273,13 +273,22 @@ final class OnboardingSmokeTests: XCTestCase {
     }
 
     private func formViewport(in app: XCUIApplication) -> CGRect {
-        let form = app.collectionViews.firstMatch.frame.intersection(app.frame)
-        let top = max(form.minY, app.navigationBars.firstMatch.frame.maxY)
+        let form = activeForm(in: app).frame.intersection(app.frame)
+        let guideIsPresented = app.collectionViews["setup.form"].exists
+        let navigationBar = guideIsPresented ? app.navigationBars["Set Up Hermes"] : app.navigationBars["hocket"]
+        let top = max(form.minY, navigationBar.frame.maxY)
         let bottom = app.keyboards.firstMatch.exists ? min(form.maxY, app.keyboards.firstMatch.frame.minY) : form.maxY
         // Test actual visible bounds. An artificial inset made a fully visible,
         // hittable row 1.3 pt above that inset trigger alternating scrolls on Duo.
         // Drag endpoints already keep their own 20% margin inside this viewport.
         return CGRect(x: form.minX, y: top, width: form.width, height: max(0, bottom - top))
+    }
+
+    private func activeForm(in app: XCUIApplication) -> XCUIElement {
+        // A sheet leaves the presenting Form in the accessibility tree. Scope
+        // gestures to the guide, otherwise large-text tests drag the covered form.
+        let guide = app.collectionViews["setup.form"]
+        return guide.exists ? guide : app.collectionViews["connection.form"]
     }
 
     private func attachScreenshot(_ app: XCUIApplication, name: String) {

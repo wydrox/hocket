@@ -29,8 +29,9 @@ struct GatewayPreflightTests {
         #expect(throws: (any Error).self) { try GatewayPreflight.signInOptions(Data(response.utf8)) }
     }
 
-    @Test func transportErrorsGiveActionableHelpWithoutEchoingURLs() {
-        let error = URLError(.cannotConnectToHost, userInfo: [NSURLErrorFailingURLStringErrorKey: "https://private.example/?secret=do-not-display"])
+    @Test func transportErrorsGiveActionableHelpWithoutEchoingURLs() throws {
+        let privateURL = try #require(URL(string: "https://private.example/?secret=do-not-display"))
+        let error = URLError(.cannotConnectToHost, userInfo: [NSURLErrorFailingURLErrorKey: privateURL])
         let message = GatewayPreflight.message(for: error)
         #expect(message.contains("Tailscale"))
         #expect(!message.contains("private.example"))

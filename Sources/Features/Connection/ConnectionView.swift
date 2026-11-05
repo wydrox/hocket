@@ -137,6 +137,7 @@ struct ConnectionView: View {
                 .disabled(isConnecting || !hasCredentials)
             }
         }
+        .accessibilityIdentifier("connection.form")
         .navigationTitle(isInitialSetup ? "hocket" : "Edit Connection")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

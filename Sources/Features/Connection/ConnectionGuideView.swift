@@ -31,6 +31,7 @@ struct ConnectionGuideView: View {
                     .accessibilityIdentifier("setup.continue")
                 }
             }
+            .accessibilityIdentifier("setup.form")
             // Start each step at its heading, including after returning from a long guide.
             .id(step)
             .navigationTitle("Set Up Hermes")
