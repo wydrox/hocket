@@ -1,0 +1,328 @@
+name: Cloud TestFlight fallback · hocket
+run-name: hocket TestFlight build ${{ inputs.build_number }} · validated run ${{ inputs.validation_run_id }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Full 40-character app commit SHA that passed Validate iOS
+        required: true
+        type: string
+      validation_run_id:
+        description: Successful run ID of this repository's validate.yml workflow
+        required: true
+        type: string
+      build_number:
+        description: New positive integer CFBundleVersion for this upload
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: hocket-testflight
+  cancel-in-progress: false
+
+# Xcode Cloud remains the intended release pipeline. This manual cloud fallback
+# uploads the exact commit already validated by validate.yml without rerunning tests.
+jobs:
+  distribute:
+    name: Archive and upload the validated hocket commit
+    runs-on: xcode-27
+    timeout-minutes: 30
+    strategy:
+      max-parallel: 1
+    steps:
+      - name: Verify the successful validation run before checking out app code
+        id: gate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          VALIDATION_RUN_ID: ${{ inputs.validation_run_id }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import subprocess
+
+          source_sha = os.environ['SOURCE_SHA']
+          validation_run_id = os.environ['VALIDATION_RUN_ID']
+          build_number = os.environ['BUILD_NUMBER']
+          if not re.fullmatch(r'[0-9a-fA-F]{40}', source_sha):
+              raise SystemExit('source_sha must be a full 40-character hexadecimal commit SHA.')
+          if not re.fullmatch(r'[1-9][0-9]*', validation_run_id):
+              raise SystemExit('validation_run_id must be a positive integer.')
+          if not re.fullmatch(r'[1-9][0-9]*', build_number):
+              raise SystemExit('build_number must be a new positive integer.')
+          source_sha = source_sha.lower()
+          repository = os.environ['GITHUB_REPOSITORY']
+          response = subprocess.run(
+              ['gh', 'api', f'repos/{repository}/actions/runs/{validation_run_id}'],
+              check=True, capture_output=True, text=True, timeout=60)
+          run = json.loads(response.stdout)
+          expected = {
+              'repository': repository,
+              'head_sha': source_sha,
+              'path': '.github/workflows/validate.yml',
+              'status': 'completed',
+              'conclusion': 'success',
+          }
+          actual = {
+              'repository': run.get('repository', {}).get('full_name'),
+              'head_sha': str(run.get('head_sha', '')).lower(),
+              'path': run.get('path'),
+              'status': run.get('status'),
+              'conclusion': run.get('conclusion'),
+          }
+          for field, value in expected.items():
+              if actual[field] != value:
+                  raise SystemExit(f'Validation gate refused: {field} does not match the required value.')
+          evidence = Path(os.environ['RUNNER_TEMP']) / 'hocket-release-evidence'
+          evidence.mkdir(mode=0o700, exist_ok=True)
+          (evidence / 'validation-gate.json').write_text(json.dumps({
+              **actual,
+              'validation_run_id': validation_run_id,
+              'validation_run_url': run.get('html_url'),
+              'build_number': build_number,
+              'release_workflow_sha': os.environ['GITHUB_SHA'],
+          }, indent=2) + '\n')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:
+              stream.write(f'source_sha={source_sha}\n')
+          print(f'Validated {source_sha} against successful validation run {validation_run_id}.')
+          PY
+
+      - name: Check out precisely the validated app commit
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ steps.gate.outputs.source_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Select an installed stable Xcode 27 toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import os
+          from pathlib import Path
+          import plistlib
+          import re
+
+          candidates = []
+          for app in Path('/Applications').glob('Xcode*.app'):
+              if any(word in app.name.lower() for word in ('beta', 'candidate')):
+                  continue
+              info_path = app / 'Contents/Info.plist'
+              if not info_path.is_file():
+                  continue
+              with info_path.open('rb') as stream:
+                  version = str(plistlib.load(stream).get('CFBundleShortVersionString', ''))
+              if re.fullmatch(r'27(?:\.\d+){0,2}', version):
+                  numeric = tuple(int(part) for part in version.split('.'))
+                  candidates.append((numeric, app.resolve()))
+          if not candidates:
+              raise SystemExit('Required stable Xcode 27.x is absent. Select a compatible standard runner; no toolchain will be downloaded.')
+          _, selected = max(candidates)
+          developer = selected / 'Contents/Developer'
+          with open(os.environ['GITHUB_ENV'], 'a') as stream:
+              stream.write(f'DEVELOPER_DIR={developer}\n')
+          print(f'Selected {selected}')
+          PY
+
+      - name: Check project identity and print the selected toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          import plistlib
+          import subprocess
+
+          expected_sha = json.loads((Path(os.environ['RUNNER_TEMP']) / 'hocket-release-evidence/validation-gate.json').read_text())['head_sha']
+          actual_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          if actual_sha != expected_sha:
+              raise SystemExit('Checked-out app commit differs from the validated commit.')
+          project = plistlib.loads(subprocess.check_output([
+              'plutil', '-convert', 'xml1', '-o', '-', 'HermesPocket.xcodeproj/project.pbxproj']))
+          objects = project['objects']
+          targets = [value for value in objects.values()
+                     if value.get('isa') == 'PBXNativeTarget' and value.get('name') == 'HermesPocket']
+          if len(targets) != 1:
+              raise SystemExit('Expected exactly one HermesPocket app target.')
+          configurations = objects[targets[0]['buildConfigurationList']]['buildConfigurations']
+          release = [objects[identifier] for identifier in configurations
+                     if objects[identifier].get('name') == 'Release']
+          if len(release) != 1 or release[0]['buildSettings'].get('PRODUCT_BUNDLE_IDENTIFIER') != 'com.wydrox.hocket':
+              raise SystemExit('The validated source does not configure the hocket release bundle identifier.')
+          PY
+          plutil -lint Config/Info.plist
+          xcodebuild -version
+          xcrun swift --version
+
+      - name: Prepare the API credential in protected runner temporary storage
+        id: credential
+        shell: bash
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 <<'PY'
+          import os
+          from pathlib import Path
+          import re
+
+          for name in ('ASC_PRIVATE_KEY', 'ASC_KEY_ID', 'ASC_ISSUER_ID'):
+              if not os.environ.get(name, '').strip():
+                  raise SystemExit(f'Required GitHub secret {name} is missing; archive will not run.')
+          if not re.fullmatch(r'[A-Za-z0-9]{10}', os.environ['ASC_KEY_ID']):
+              raise SystemExit('ASC_KEY_ID has an invalid format.')
+          if not re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', os.environ['ASC_ISSUER_ID']):
+              raise SystemExit('ASC_ISSUER_ID has an invalid format.')
+          directory = Path(os.environ['RUNNER_TEMP']) / 'hocket-signing'
+          directory.mkdir(mode=0o700, exist_ok=True)
+          directory.chmod(0o700)
+          key = directory / 'AuthKey.p8'
+          descriptor = os.open(key, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+          with os.fdopen(descriptor, 'w') as stream:
+              stream.write(os.environ['ASC_PRIVATE_KEY'].strip() + '\n')
+          key.chmod(0o600)
+          PY
+          openssl pkey -in "$RUNNER_TEMP/hocket-signing/AuthKey.p8" -noout >/dev/null 2>&1
+
+      - name: Archive the validated app with automatic signing
+        id: archive
+        shell: bash
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          set -euo pipefail
+          xcodebuild archive \
+            -project HermesPocket.xcodeproj \
+            -scheme HermesPocket \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/hocket-derived-data" \
+            -archivePath "$RUNNER_TEMP/hocket.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/hocket-signing/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM=7S3F9767BM \
+            CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            2>&1 | tee "$RUNNER_TEMP/hocket-release-evidence/archive.log"
+
+      - name: Cloud sign and upload for internal TestFlight testing
+        id: upload
+        shell: bash
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import os
+          from pathlib import Path
+          import plistlib
+
+          options = {
+              'method': 'app-store-connect',
+              'destination': 'upload',
+              'signingStyle': 'automatic',
+              'teamID': '7S3F9767BM',
+              'testFlightInternalTestingOnly': True,
+              'manageAppVersionAndBuildNumber': False,
+              'uploadSymbols': True,
+          }
+          with (Path(os.environ['RUNNER_TEMP']) / 'hocket-signing/ExportOptions.plist').open('wb') as stream:
+              plistlib.dump(options, stream)
+          PY
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/hocket.xcarchive" \
+            -exportPath "$RUNNER_TEMP/hocket-export" \
+            -exportOptionsPlist "$RUNNER_TEMP/hocket-signing/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/hocket-signing/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            2>&1 | tee "$RUNNER_TEMP/hocket-release-evidence/upload.log"
+
+      - name: Remove this workflow's temporary API key
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f -- "$RUNNER_TEMP/hocket-signing/AuthKey.p8"
+          rm -f -- "$RUNNER_TEMP/hocket-signing/ExportOptions.plist"
+          if [[ -d "$RUNNER_TEMP/hocket-signing" ]]; then
+            rmdir -- "$RUNNER_TEMP/hocket-signing"
+          fi
+          # This workflow creates no custom keychain and revokes no certificates.
+          # The hosted runner disposes its normal ephemeral keychain after the job.
+
+      - name: Record distribution attempt metadata without signing material
+        if: always()
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          VALIDATION_RUN_ID: ${{ inputs.validation_run_id }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          VALIDATION_OUTCOME: ${{ steps.gate.outcome }}
+          CREDENTIAL_OUTCOME: ${{ steps.credential.outcome }}
+          ARCHIVE_OUTCOME: ${{ steps.archive.outcome }}
+          UPLOAD_OUTCOME: ${{ steps.upload.outcome }}
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          evidence = Path(os.environ['RUNNER_TEMP']) / 'hocket-release-evidence'
+          evidence.mkdir(mode=0o700, exist_ok=True)
+          metadata = {
+              'repository': os.environ['GITHUB_REPOSITORY'],
+              'source_sha': os.environ['SOURCE_SHA'],
+              'release_workflow_sha': os.environ['GITHUB_SHA'],
+              'release_run_id': os.environ['GITHUB_RUN_ID'],
+              'validation_run_id': os.environ['VALIDATION_RUN_ID'],
+              'bundle_id': 'com.wydrox.hocket',
+              'app_store_connect_app_id': '6831068473',
+              'build_number': os.environ['BUILD_NUMBER'],
+              'validation_gate': os.environ['VALIDATION_OUTCOME'],
+              'credential_preparation': os.environ['CREDENTIAL_OUTCOME'],
+              'archive_command': os.environ['ARCHIVE_OUTCOME'],
+              'upload_command': os.environ['UPLOAD_OUTCOME'],
+              'apple_processing': 'NOT_VERIFIED',
+              'internal_group_distribution': 'NOT_VERIFIED',
+              'device_acceptance': 'NOT_VERIFIED',
+          }
+          (evidence / 'distribution-attempt.json').write_text(json.dumps(metadata, indent=2) + '\n')
+          PY
+
+      - name: Upload command logs and distribution metadata only
+        if: always()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: hocket-testflight-attempt-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/hocket-release-evidence/validation-gate.json
+            ${{ runner.temp }}/hocket-release-evidence/distribution-attempt.json
+            ${{ runner.temp }}/hocket-release-evidence/archive.log
+            ${{ runner.temp }}/hocket-release-evidence/upload.log
+          if-no-files-found: warn
+          retention-days: 7
