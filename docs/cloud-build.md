@@ -42,6 +42,7 @@ credential is required for the cloud build. ATS retains secure defaults;
 Push an intended release revision to `main`, or start this workflow manually in
 App Store Connect. Xcode Cloud increments its build number, runs the required
 tests, archives with automatic signing, and distributes to the internal group.
+Automatic builds skip commits that change only `docs/` and `README.md`.
 Do not equate an uploaded archive with a completed release: verify successful
 actions, Apple processing, group membership and tester availability separately.
 Device installation and live-server testing remain separate evidence tiers.

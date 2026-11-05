@@ -11,7 +11,7 @@ Evidence updated 2026-11-05. Xcode Cloud build 2 passed all 34 tests, signed the
 | Accessibility | Onboarding light/dark, largest-text field/action traversal, HTTPS validation and access-token switch passed on iPhone 18 Pro. VoiceOver and other screens NOT_RUN | Accessibility Inspector, VoiceOver traversal, largest text, keyboard, light/dark/increased contrast/reduced motion. |
 | Real server flows | NOT_RUN | Connection, actual threads/history, send/stream/reconcile, attachments, settings readback, commands and approvals as supported. |
 | Xcode Cloud | PASS: build 2, Test + Archive + internal TestFlight post-action SUCCEEDED | Correct committed revision, workflow, successful signed archive and distribution logs. |
-| TestFlight | PASS for distribution: build VALID, present in hocket Internal, owner INVITED. Device install/open NOT_RUN | App Store Connect processed build and intended tester availability; device install/open separately recorded if performed. |
+| TestFlight | PASS for distribution: build VALID, present in hocket Internal, owner INSTALLED. ASC reports iPad Pro 11-inch (M4), iOS 27.0; assistant-operated walkthrough NOT_RUN | App Store Connect processed build and intended tester availability; device install/open separately recorded if performed. |
 
 ## Build 2 evidence
 
