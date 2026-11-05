@@ -114,10 +114,12 @@ extension HermesStore {
             if !previousModel.isEmpty, !selectedModel.isEmpty, previousModel != selectedModel {
                 let modelName = payload["model"].string ?? selectedModel
                 let effort = selectedEffort.isEmpty ? "" : " · \(selectedEffort)"
+                sealSegment(streamID, key: streamKey)
                 appendActivity(id: activityID, text: "Model changed to \(modelName)\(effort)")
             }
         case "agent.print":
             if let text = payload["text"].string, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                sealSegment(streamID, key: streamKey)
                 appendActivity(id: activityID, text: text)
             }
         case "status.update":
@@ -125,6 +127,7 @@ extension HermesStore {
             // The gateway tags actual compaction progress; never guess from arbitrary prose.
             if let kind = payload["kind"].string, ["compacting", "compacted", "compressing"].contains(kind),
                let text = payload["text"].string, !text.isEmpty {
+                sealSegment(streamID, key: streamKey)
                 appendActivity(id: activityID, text: text)
             }
         default: break // Additive gateway events are safe to ignore; cursor has advanced.

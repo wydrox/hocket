@@ -61,4 +61,13 @@ struct SessionActivityTests {
         #expect(store.messages[0].status == .complete)
         #expect(store.messages[1].status == .complete)
     }
+
+    @Test @MainActor func systemActivityStaysBetweenAssistantSegments() {
+        let store = store()
+        store.applyEvent(event("message.delta", sequence: 1, payload: ["text": .string("Before compaction")]))
+        store.applyEvent(event("status.update", sequence: 2, payload: ["kind": .string("compacting"), "text": .string("Summarizing context…")]))
+        store.applyEvent(event("message.delta", sequence: 3, payload: ["text": .string("After compaction")]))
+        #expect(store.messages.map(\.role) == [.assistant, .system, .assistant])
+        #expect(store.messages.map(\.text) == ["Before compaction", "Summarizing context…", "After compaction"])
+    }
 }
