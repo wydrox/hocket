@@ -7,27 +7,31 @@ Verified 2026-11-05. These are observed release states, not planned outcomes.
 | Repository | Private [wydrox/hocket](https://github.com/wydrox/hocket), default branch `main` |
 | App | `hocket: Hermes Agent`, Apple ID `6831068473`; device display name `hocket` |
 | Bundle / team | `com.wydrox.hocket` / `7S3F9767BM` |
-| Version | **1.0.1 (5)**, iOS/iPadOS 27+ |
-| Released source | `4798d93b516db2c0ba1e02e931027fe4d73674bb`, branch `fix/review4-thread-list-chat` |
-| Xcode Cloud | Build 5 `d5294461-810e-4b2d-8272-4a7fecac2913`, **SUCCEEDED** at 12:26:52 UTC |
-| Cloud tests | **56 passed**: 51 unit tests and 5 onboarding UI tests, iPhone 18 Pro / iOS 27.2 |
-| Archive and signing | **SUCCEEDED** in Xcode Cloud, Xcode 27.2 (`27B52`) |
-| Apple processing | **VALID**, internal-only build `a6b287e9-2158-4687-8936-6fe395c281c7` |
-| TestFlight distribution | Cloud post-action **SUCCEEDED**; build 5 read back in `hocket Internal`, state **IN_BETA_TESTING**, at 12:27:45 UTC |
-| Tester | Existing internal group preserved; installation of build 5 has not been verified |
-| Device installation | **NOT_RUN for build 5**. Historical readback reported 1.0.0 (2) installed on iPad Pro 11-inch (M4), iOS 27.0 |
+| Version | **1.0.1 (6)**, iOS/iPadOS 27+ |
+| Released source | `acba677eb01384fe1928c69087da8a0f231b1a07`, branch `fix/review4-thread-list-chat` |
+| Xcode Cloud | Build 6 `099a6da9-f822-4745-acc0-d708efba5203`, **SUCCEEDED** at 16:09:05 UTC |
+| Cloud tests | **86 passed**: 81 unit tests and 5 onboarding UI tests, iPhone 18 Pro / iOS 27.2 |
+| Archive and signing | **SUCCEEDED** in Xcode Cloud |
+| Apple processing | **VALID**, internal-only build `1691ed9d-9d8e-4a0c-b2af-c8501f770f78` |
+| TestFlight distribution | Cloud post-action **SUCCEEDED**; build 6 read back in `hocket Internal`, state **IN_BETA_TESTING**, at 16:10:42 UTC |
+| Tester | Existing internal group preserved; installation of build 6 has not been verified |
+| Device installation | **NOT_RUN for build 6**. Historical readback reported 1.0.0 (2) installed on iPad Pro 11-inch (M4), iOS 27.0 |
 | Local checkout | `/Users/rafalw/Dev/hocket`, connected to `wydrox/hocket` |
 | Local builds/tests | **NOT_RUN**; all compilation and test execution took place in the cloud |
 | Assistant-operated device walkthrough / live authenticated chat / VoiceOver | **NOT_RUN** |
 
-[Cloud build and results](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/xcode-cloud/products/6df352ca-bec7-4a8a-b369-a2bb039dc3d9/builds/d5294461-810e-4b2d-8272-4a7fecac2913/summary) · [TestFlight group](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/apps/6831068473/testflight/groups/88f6a4c3-af5f-46dc-acb3-9f0a83b71a6e).
+[Cloud build and results](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/xcode-cloud/products/6df352ca-bec7-4a8a-b369-a2bb039dc3d9/builds/099a6da9-f822-4745-acc0-d708efba5203/summary) · [TestFlight group](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/apps/6831068473/testflight/groups/88f6a4c3-af5f-46dc-acb3-9f0a83b71a6e).
 
-Build 5 contains Review 4 fixes for live/stored thread discovery, local search,
-scoped command/list errors, message alignment/context actions, selected titles,
-and tool/model/compaction timeline ordering. It was manually built from the exact
-GitHub-validated commit above; the PR has not been merged. Beta testing notes were
-written and read back in App Store Connect. Distribution does not establish
-physical-device or live Hermes acceptance.
+Build 6 adds Hermes profile selection, authenticated history pages of
+50, deduplication of physical/canonical conversation aliases, compact thread rows,
+and a pinned connection footer with the actual loaded count and last successful
+refresh. It retains the earlier Review 4 message and activity fixes from build 5.
+It was manually built from the exact GitHub-validated source above; the PR has not
+been merged. GitHub Actions and Xcode Cloud each passed 81 unit and 5 UI tests.
+The largest Dynamic Type guide test follows the system toolbar overflow before
+closing. Beta testing notes were written and read back in App Store Connect.
+Distribution does not establish physical-device or live Hermes acceptance. The
+requested simulator screenshot review remains explicitly deferred by the user.
 
 ## Onboarding update
 
@@ -41,7 +45,7 @@ Build 3 compiled and archived but failed one UI harness assertion (40/41 passed)
 the test inspected the covered connection Form while trying to scroll the guide
 sheet. Build 4 scopes gestures and visibility checks to the presented guide and
 passes all 41 tests. Build 3 was **not** added to the internal group. At that point the group
-contained builds 2 and 4; build 5 was subsequently added as recorded above. See the [onboarding verification](product/connection-onboarding/verify-report.md)
+contained builds 2 and 4; builds 5 and 6 were subsequently added. See the [onboarding verification](product/connection-onboarding/verify-report.md)
 and its ten unmodified cloud screenshots. No local compilation or simulator run
 was used to validate this update.
 
