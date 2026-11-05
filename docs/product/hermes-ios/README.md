@@ -14,9 +14,13 @@ The product thesis is a quiet messenger that keeps the conversation central and 
 | 2 — native component map | done, adapted | [component-map.md](component-map.md); SwiftUI/system components replace the web-specific shadcn stage. |
 | 3 — visual direction | done | [visual-direction.md](visual-direction.md); semantic palette and system text styles. |
 | Gate B — visual approval | done | Same explicit user preapproval; the ASCII layouts record the concrete decision. |
-| 4 — implementation | done, validation pending | Native source in `Sources/`, protocol tests in `Tests/`. Independent source review issues corrected. |
-| 5 — runtime and visual verification | in progress | Cloud tests and onboarding screenshot suite; [verify-report.md](verify-report.md) tracks evidence. Authenticated chat/device acceptance is pending. |
-| Xcode Cloud build / TestFlight | blocked | Apple account onboarding required; [release status](../../release-status.md) records the exact state. |
+| 4 — implementation | done | Native source in `Sources/`, protocol tests in `Tests/`. Independent source review issues corrected. |
+| 5 — runtime and visual verification | cloud onboarding verified; live chat pending | Build 2 passed all 34 tests; [verify-report.md](verify-report.md) records screenshots and boundaries. |
+| Xcode Cloud build / TestFlight | first beta delivered | Version 1.0.0 (2) installed by the owner; [release status](../../release-status.md) records the exact state. |
+
+The follow-up [connection onboarding improvement](../connection-onboarding/README.md)
+adds a source-verified three-step Hermes setup guide and public server discovery.
+Its cloud validation is tracked separately from the first beta.
 
 ## Scope and priority
 
@@ -57,4 +61,8 @@ Psychology references read: `references/playbooks.md` (§1–5), `references/aud
 
 ## Current scorecard
 
-Information / Meaning / Time / Memory: **not yet scored on built UI**. Ethics: **specification passes**, runtime recheck pending. Accessibility: **specified, not verified**. Screenshots, device operation, Cloud build, App Store processing and TestFlight installation: **NOT_RUN by this design task**.
+Information / Meaning / Time / Memory: **not measured in a user study**. Ethics:
+**specification passes**. Cloud onboarding screenshots cover light, dark and
+largest Dynamic Type; they do not establish VoiceOver or authenticated physical
+device acceptance. Cloud build, processing and owner installation are verified in
+the linked release record.

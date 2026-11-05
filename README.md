@@ -62,3 +62,15 @@ Build, device, and TestFlight status is recorded separately in
 
 The first internal beta is **1.0.0 (2)**, built and distributed by Xcode Cloud from
 `592f1d875edfaeb7f984a6234136a2ca6a5940a4`. All 34 cloud tests passed.
+
+The earlier onboarding beta was **1.0.1 (4)**, from
+`bd4a7c8700d69b92b11ca2210fc693ed1fe042ae`. All **41 cloud tests passed**, and the
+Xcode Cloud TestFlight action distributed it to **hocket Internal**. The update
+adds guided connection setup and public server discovery; see the
+[onboarding evidence](docs/product/connection-onboarding/verify-report.md).
+
+The latest verified internal beta is **1.0.1 (5)**, from
+`4798d93b516db2c0ba1e02e931027fe4d73674bb`. All **56 cloud tests passed**,
+and the build is available in **hocket Internal** with the Review 4 fixes.
+Profile selection and paginated history are newer source changes that have not
+yet been distributed; see [release status](docs/release-status.md).

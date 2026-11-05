@@ -20,7 +20,9 @@ struct ThreadHistoryTests {
     @Test func authenticatedRequestUsesDashboardPaginationAndExplicitNamedProfile() throws {
         var credentials = GatewayCredentials(endpoint: "https://example.test", token: "dummy-test-token")
         let request = try ThreadHistoryClient.request(credentials: credentials, offset: 200)
-        let items = try #require(URLComponents(url: #require(request.url), resolvingAgainstBaseURL: false)?.queryItems)
+        let requestURL = try #require(request.url)
+        let components = try #require(URLComponents(url: requestURL, resolvingAgainstBaseURL: false))
+        let items = try #require(components.queryItems)
         #expect(request.url?.path == "/api/sessions")
         #expect(request.value(forHTTPHeaderField: "Authorization") == "Bearer dummy-test-token")
         #expect(items.contains(URLQueryItem(name: "limit", value: "50")))
@@ -30,7 +32,9 @@ struct ThreadHistoryTests {
         #expect(!items.contains { $0.name == "profile" })
         credentials.profileName = "work profile"
         let named = try ThreadHistoryClient.request(credentials: credentials, offset: 0)
-        #expect(URLComponents(url: #require(named.url), resolvingAgainstBaseURL: false)?.queryItems?.contains(URLQueryItem(name: "profile", value: "work profile")) == true)
+        let namedURL = try #require(named.url)
+        let namedComponents = try #require(URLComponents(url: namedURL, resolvingAgainstBaseURL: false))
+        #expect(namedComponents.queryItems?.contains(URLQueryItem(name: "profile", value: "work profile")) == true)
     }
 
     @Test @MainActor func olderThanTwoHundredConversationsRemainReachableAndSearchLoadsOlderMatches() async throws {

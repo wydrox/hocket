@@ -16,6 +16,7 @@ Verified 2026-11-05. These are observed release states, not planned outcomes.
 | TestFlight distribution | Cloud post-action **SUCCEEDED**; build 5 read back in `hocket Internal`, state **IN_BETA_TESTING**, at 12:27:45 UTC |
 | Tester | Existing internal group preserved; installation of build 5 has not been verified |
 | Device installation | **NOT_RUN for build 5**. Historical readback reported 1.0.0 (2) installed on iPad Pro 11-inch (M4), iOS 27.0 |
+| Local checkout | `/Users/rafalw/Dev/hocket`, connected to `wydrox/hocket` |
 | Local builds/tests | **NOT_RUN**; all compilation and test execution took place in the cloud |
 | Assistant-operated device walkthrough / live authenticated chat / VoiceOver | **NOT_RUN** |
 
@@ -27,6 +28,22 @@ and tool/model/compaction timeline ordering. It was manually built from the exac
 GitHub-validated commit above; the PR has not been merged. Beta testing notes were
 written and read back in App Store Connect. Distribution does not establish
 physical-device or live Hermes acceptance.
+
+## Onboarding update
+
+Version 1.0.1 adds an optional three-step **Set Up Hermes** guide, also available
+under **Settings → Help and Privacy**, and a credential-free **Check Server**
+action. It explains the actual Desktop Web access controls, their Nous sign-in
+limitation, private-network access and the required Hermes password credentials.
+The guide preserves the entered address and supports the largest Dynamic Type.
+
+Build 3 compiled and archived but failed one UI harness assertion (40/41 passed):
+the test inspected the covered connection Form while trying to scroll the guide
+sheet. Build 4 scopes gestures and visibility checks to the presented guide and
+passes all 41 tests. Build 3 was **not** added to the internal group. At that point the group
+contained builds 2 and 4; build 5 was subsequently added as recorded above. See the [onboarding verification](product/connection-onboarding/verify-report.md)
+and its ten unmodified cloud screenshots. No local compilation or simulator run
+was used to validate this update.
 
 ## Pipeline
 
@@ -63,8 +80,9 @@ login. The gateway's loopback port is ephemeral: the Serve route needs resync
 after a gateway restart. See [connection deployment](mobile-connection-plan.md).
 No real Hermes password or token was retrieved or embedded in the app.
 
-Onboarding screenshots from the actual cloud test result are checked in with the
-[verification record](product/hermes-ios/verify-report.md). TestFlight availability
+Onboarding screenshots from the actual cloud test results are checked in with the
+[first beta record](product/hermes-ios/verify-report.md) and the
+[setup guide record](product/connection-onboarding/verify-report.md). TestFlight availability
 does not establish a physical-device launch or authenticated end-to-end chat.
 Voice entry uses system keyboard dictation. Background push notifications and a
 phone-side Hermes runtime are outside this first beta.

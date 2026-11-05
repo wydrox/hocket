@@ -10,8 +10,8 @@ showing where to click in Hermes and how to connect hocket.
 | Gates A/B | User authorized autonomous completion and TestFlight delivery; no extra confirmation |
 | Native component map | Done; [components](component-map.md); SwiftUI adaptation of master-product |
 | Visual direction | Done; [direction](visual-direction.md); existing semantic styles preserved |
-| Implementation | Done; source review and cloud validation pending |
-| Verification | In progress; [record](verify-report.md) |
+| Implementation | Done; independent static review found no blockers |
+| Verification | Done for cloud onboarding scope; build 4 passed 41 tests and was distributed to TestFlight; [record](verify-report.md) |
 
 Applied master-product, apple-design and swiftui-pro. The web-only shadcn stage is
 adapted to native components; no packages were installed. The improvement keeps
