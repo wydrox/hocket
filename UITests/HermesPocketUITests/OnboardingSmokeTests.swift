@@ -6,17 +6,6 @@ import XCTest
 final class OnboardingSmokeTests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
-        addTeardownBlock { [weak self] in
-            await MainActor.run {
-                guard let self, (self.testRun?.failureCount ?? 0) > 0 else { return }
-                let app = XCUIApplication()
-                self.attachScreenshot(app, name: "Failure-\(self.name)")
-                let hierarchy = XCTAttachment(string: app.debugDescription)
-                hierarchy.name = "Failure-Accessibility-Hierarchy-\(self.name)"
-                hierarchy.lifetime = .keepAlways
-                self.add(hierarchy)
-            }
-        }
     }
 
     func testLightOnboardingValidationAndAccessTokenOption() {
@@ -116,6 +105,11 @@ final class OnboardingSmokeTests: XCTestCase {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         }
         app.launch()
+        attachScreenshot(app, name: "Launch-\(name)")
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = "Launch-Accessibility-Hierarchy-\(name)"
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
         XCTAssertTrue(app.navigationBars["hocket"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Your Hermes, within reach."].waitForExistence(timeout: 10))
         XCTAssertTrue(textField("https://hermes.example.com", in: app).waitForExistence(timeout: 10),
