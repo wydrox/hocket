@@ -1,17 +1,25 @@
 # Verification record
 
-Evidence updated 2026-11-05. Specification and static review are complete; cloud unit tests and partial onboarding UI results exist. Live-server flows, full-screen accessibility, signed distribution and device acceptance remain separate unverified tiers.
+Evidence updated 2026-11-05. Xcode Cloud build 2 passed all 34 tests, signed the app and distributed version 1.0.0 (2) to the internal TestFlight group. Live authenticated server flows, full-screen accessibility and physical-device acceptance remain separate unverified tiers.
 
 | Evidence tier | Status | Required completion evidence |
 |---|---|---|
 | Product specification | Complete | Four linked artifacts, all principal screen states, capability boundaries and ethics decisions. |
 | Contract alignment | Complete against installed canonical gateway source | Compare each feature and value source with the independent real-server contract report; update copy/scope for absent capabilities. |
 | Static implementation review | Completed with attachment/model-confirmation fixes | SwiftUI/API review, Keychain and endpoint handling, privacy declarations, stable message identity and state transitions. |
-| Native visual QA | Partial: cloud iPhone Duo onboarding captures inspected; remaining screens/devices NOT_RUN | Actual screenshots at smallest supported iPhone, larger iPhone, regular iPad and narrow iPad window. |
-| Accessibility | Partial: actual dark and largest-text captures inspected; largest-text field/action traversal passed on Duo. One light-mode test helper correction awaits its result; VoiceOver NOT_RUN | Accessibility Inspector, VoiceOver traversal, largest text, keyboard, light/dark/increased contrast/reduced motion. |
+| Native visual QA | Onboarding captures inspected on cloud iPhone Duo and iPhone 18 Pro; five final build-2 captures saved below. Remaining screens/iPad NOT_RUN | Actual screenshots at smallest supported iPhone, larger iPhone, regular iPad and narrow iPad window. |
+| Accessibility | Onboarding light/dark, largest-text field/action traversal, HTTPS validation and access-token switch passed on iPhone 18 Pro. VoiceOver and other screens NOT_RUN | Accessibility Inspector, VoiceOver traversal, largest text, keyboard, light/dark/increased contrast/reduced motion. |
 | Real server flows | NOT_RUN | Connection, actual threads/history, send/stream/reconcile, attachments, settings readback, commands and approvals as supported. |
-| Xcode Cloud | Product and Test/Archive/internal-distribution workflow configured; full run pending | Correct committed revision, workflow, successful signed archive and distribution logs. |
-| TestFlight | NOT_RUN | App Store Connect processed build and intended tester availability; device install/open separately recorded if performed. |
+| Xcode Cloud | PASS: build 2, Test + Archive + internal TestFlight post-action SUCCEEDED | Correct committed revision, workflow, successful signed archive and distribution logs. |
+| TestFlight | PASS for distribution: build VALID, present in hocket Internal, owner INVITED. Device install/open NOT_RUN | App Store Connect processed build and intended tester availability; device install/open separately recorded if performed. |
+
+## Build 2 evidence
+
+- Source: `592f1d875edfaeb7f984a6234136a2ca6a5940a4`.
+- [Xcode Cloud build](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/xcode-cloud/products/6df352ca-bec7-4a8a-b369-a2bb039dc3d9/builds/9e86f6b4-b959-4e27-a03d-4a0d4e610127/summary), completed 2026-11-05 10:55:39 UTC.
+- 31 unit tests and 3 UI tests: all SUCCESS on iPhone 18 Pro, iOS 27.2.
+- Native screenshots: [light](screenshots/iphone18pro-onboarding-light.png), [dark](screenshots/iphone18pro-onboarding-dark.png), [access token](screenshots/iphone18pro-onboarding-access-token.png), [largest-text address](screenshots/iphone18pro-onboarding-xxxl-address.png), [largest-text action](screenshots/iphone18pro-onboarding-xxxl-action.png).
+- Known minor UX issue: after an invalid address is corrected, its prior inline validation error remains until the next connection attempt. It does not prevent a valid sign-in. This is visible in the access-token test capture.
 
 ## Native acceptance checklist
 

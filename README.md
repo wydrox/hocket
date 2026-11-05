@@ -34,6 +34,9 @@ Background push notifications and a phone-side agent runtime are not implemented
 - Target: iOS/iPadOS 27+, Swift 6, no third-party app dependencies.
 - Bundle identifier: `com.wydrox.hocket`.
 - `ci_scripts/` prepares and verifies Xcode Cloud inputs and build numbering.
+- **hocket · TestFlight** in Xcode Cloud tests, archives, signs and distributes
+  successful builds to **hocket Internal**. It supports manual runs and changes
+  on `main`; no signing credentials are needed in the repository.
 - The manual **Validate iOS** GitHub workflow builds and runs unit tests in a
   hosted Xcode 27 environment. It does not sign or distribute an App Store build.
 
@@ -44,3 +47,6 @@ See [cloud setup and acceptance](docs/cloud-build.md),
 
 Build, device, and TestFlight status is recorded separately in
 [release status](docs/release-status.md). Source completion alone is not a tested release.
+
+The first internal beta is **1.0.0 (2)**, built and distributed by Xcode Cloud from
+`592f1d875edfaeb7f984a6234136a2ca6a5940a4`. All 34 cloud tests passed.
