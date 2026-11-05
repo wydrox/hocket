@@ -61,6 +61,7 @@
 		A00AAB3C9667B93271E38297 /* HermesThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAA547AC9D631A00ADF96631 /* HermesThread.swift */; };
 		A2A6FF9335505D7F35DC7239 /* ConversationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5912E3397D81D09D339E5199 /* ConversationView.swift */; };
 		A4E74ACA1615D070ACF95EA5 /* GatewayTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971024B74869ED3C952194FE /* GatewayTransport.swift */; };
+		A667BDA4B8D48B6B57852AD7 /* SidebarConnectionFooter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98A64A6ACA46980112D8EA23 /* SidebarConnectionFooter.swift */; };
 		A683463E621E908A3168CE7B /* ThreadRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29429A2786204B9978623ED0 /* ThreadRow.swift */; };
 		A6F3CF37422C58E2F194D143 /* SessionReplayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DD5211235AF6A60474513F3 /* SessionReplayTests.swift */; };
 		A95DF86D6FDD4E6F485A87CF /* AttachmentDownloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45B3E7E0550C1032D368EABA /* AttachmentDownloader.swift */; };
@@ -156,6 +157,7 @@
 		96FCF86D612DA6D7C96EC343 /* MessageAttachmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessageAttachmentView.swift; sourceTree = "<group>"; };
 		971024B74869ED3C952194FE /* GatewayTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayTransport.swift; sourceTree = "<group>"; };
 		974CD34F7F4A41351C94CDC2 /* AttachmentProjection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttachmentProjection.swift; sourceTree = "<group>"; };
+		98A64A6ACA46980112D8EA23 /* SidebarConnectionFooter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarConnectionFooter.swift; sourceTree = "<group>"; };
 		9D4BAC25148355DF14CD82D7 /* ThreadListTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThreadListTests.swift; sourceTree = "<group>"; };
 		9ED8AE77099E79E1AA89657C /* ChatAttachment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatAttachment.swift; sourceTree = "<group>"; };
 		A18FF4D61F3B5FBF074440B8 /* SubmissionJournal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubmissionJournal.swift; sourceTree = "<group>"; };
@@ -353,6 +355,7 @@
 		966DAAB690CC449165AB6B5A /* Threads */ = {
 			isa = PBXGroup;
 			children = (
+				98A64A6ACA46980112D8EA23 /* SidebarConnectionFooter.swift */,
 				7AC9D329DE3B660CDD06C6D5 /* ThreadHistoryFooter.swift */,
 				29429A2786204B9978623ED0 /* ThreadRow.swift */,
 				4F75E89CDE8F01F2ED393E47 /* ThreadSplitView.swift */,
@@ -596,6 +599,7 @@
 				4C4C471E63BE52B1C8AA9261 /* SessionCursor.swift in Sources */,
 				B9D727339497D22AACA4EA71 /* SessionOptionsView.swift in Sources */,
 				9E9E21E093B7A98D69B4DFB7 /* SettingsView.swift in Sources */,
+				A667BDA4B8D48B6B57852AD7 /* SidebarConnectionFooter.swift in Sources */,
 				97796A6796706EAB806F7CDC /* SubmissionJournal.swift in Sources */,
 				279B4DD065C63F52885B5B00 /* ThreadHistoryClient.swift in Sources */,
 				59D636D6306241AA7B6E17D5 /* ThreadHistoryFooter.swift in Sources */,

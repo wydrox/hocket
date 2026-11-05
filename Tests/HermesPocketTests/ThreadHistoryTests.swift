@@ -44,6 +44,7 @@ struct ThreadHistoryTests {
         }
         try await store.loadThreads(query: "thread-250", fetchSessions: { feed($0) }, fetchHistory: fetch)
         #expect(store.threads.isEmpty)
+        #expect(store.loadedConversationCount == 50)
         #expect(store.hasOlderThreads)
         var offsets: [Int] = []
         while store.hasOlderThreads {
@@ -52,6 +53,10 @@ struct ThreadHistoryTests {
         #expect(offsets == [50, 100, 150, 200, 250])
         #expect(store.threadHistory.rows.count == 251)
         #expect(store.threads.map(\.id) == ["thread-250"])
+        #expect(store.loadedConversationCount == 251)
+        store.setThreadSearchQuery("thread-0")
+        #expect(store.loadedConversationCount == 251)
+        store.setThreadSearchQuery("thread-250")
         #expect(store.threadSearchQuery == "thread-250")
     }
 
@@ -63,6 +68,7 @@ struct ThreadHistoryTests {
         let canonical = row("owner", title: "Canonical", extra: ["session_id": .string("owner"), "running": .bool(true)])
         try await store.loadThreads(query: "", fetchSessions: { feed($0, $0 == "live" ? [canonical] : []) }, fetchHistory: { _ in page([physical, pinned], total: 4, limit: 1) })
         #expect(store.threads.count == 2)
+        #expect(store.loadedConversationCount == 2)
         #expect(store.threads.first { $0.id == "owner" }?.title == "Canonical")
         #expect(store.threads.first { $0.id == "owner" }?.isRunning == true)
         try await store.loadOlderThreads(fetchHistory: { offset in
@@ -75,6 +81,7 @@ struct ThreadHistoryTests {
             return page([row("older"), pinned], offset: offset, total: 4, limit: 1)
         })
         #expect(store.threads.count == 3)
+        #expect(store.loadedConversationCount == 3)
         try await store.loadOlderThreads(fetchHistory: { offset in page([], offset: offset, total: 9, limit: 1) })
         #expect(!store.hasOlderThreads) // Hidden rows can inflate the server count.
     }
@@ -82,11 +89,14 @@ struct ThreadHistoryTests {
     @Test @MainActor func failedPageRetainsRowsAndRetriesSameOffset() async throws {
         let store = HermesStore()
         try await store.loadThreads(query: "", fetchSessions: { feed($0) }, fetchHistory: { _ in page([row("existing")]) })
+        let lastUpdate = try #require(store.lastThreadsUpdatedAt)
         do {
             try await store.loadOlderThreads(fetchHistory: { _ in throw GatewayError.timeout })
             Issue.record("Expected pagination failure")
         } catch { }
         #expect(store.threads.map(\.id) == ["existing"])
+        #expect(store.loadedConversationCount == 1)
+        #expect(store.lastThreadsUpdatedAt == lastUpdate)
         #expect(store.threadHistory.nextOffset == 50)
         #expect(store.threadHistoryError != nil)
         #expect(store.threadListError == nil)
@@ -149,6 +159,7 @@ struct ThreadHistoryTests {
     @Test @MainActor func corruptOrMalformedRefreshKeepsExistingHistory() async throws {
         let store = HermesStore()
         try await store.loadThreads(query: "", fetchSessions: { feed($0) }, fetchHistory: { _ in page([row("safe")]) })
+        let lastUpdate = try #require(store.lastThreadsUpdatedAt)
         let malformed = [page([], storage: ["default": .string("corrupt")]), page([], offset: 50),
             .object(["sessions": .array([]), "total": .integer(0), "limit": .integer(0), "offset": .integer(0), "storage": .object([:])])]
         for value in malformed {
@@ -157,6 +168,8 @@ struct ThreadHistoryTests {
                 Issue.record("An invalid history page must fail")
             } catch { }
             #expect(store.threads.map(\.id) == ["safe"])
+            #expect(store.loadedConversationCount == 1)
+            #expect(store.lastThreadsUpdatedAt == lastUpdate)
             #expect(store.threadHistoryError != nil)
             #expect(!store.hasLoadedThreads)
         }

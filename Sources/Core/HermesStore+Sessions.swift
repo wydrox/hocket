@@ -70,6 +70,7 @@ extension HermesStore {
             hasOlderThreads = page.hasMore
             rebuildThreadList()
             hasLoadedThreads = true
+            lastThreadsUpdatedAt = Date()
         } catch {
             guard listRequestID == requestID, currentHistoryScope == scope else { return }
             if !(error is CancellationError) {
@@ -106,6 +107,7 @@ extension HermesStore {
             // those pages; an empty raw page handles totals inflated by hidden sessions.
             hasOlderThreads = page.hasMore
             rebuildThreadList()
+            lastThreadsUpdatedAt = Date()
         } catch {
             guard listRequestID == generation, currentHistoryScope == scope else { return }
             if !(error is CancellationError) { threadHistoryError = error.localizedDescription }
@@ -122,6 +124,7 @@ extension HermesStore {
             }
         }
         let all = Self.mergeHistoryRows(history + threadHistory.canonical).map(\.thread)
+        loadedConversationCount = all.count
         if let selected = all.first(where: { $0.id == selectedThreadID }) { selectedThreadTitle = selected.title }
         threads = Self.mergeThreads(stored: all, live: [], query: threadSearchQuery)
     }

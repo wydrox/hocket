@@ -27,7 +27,6 @@ struct ThreadSplitView: View {
                     .accessibilityValue(store.currentProfileTitle)
                     .accessibilityHint("Choose a Hermes profile.")
                     .accessibilityIdentifier("threads.profile")
-                    ConnectionStatusView(connection: store.connection)
                     if store.isLoadingThreads { ProgressView("Loading Threads…") }
                     if store.connection != .connected {
                         Button("Reconnect", systemImage: "arrow.clockwise") {
@@ -61,6 +60,7 @@ struct ThreadSplitView: View {
                     }
                     ForEach(store.threads) { thread in
                         NavigationLink(value: thread.id) { ThreadRow(thread: thread) }
+                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                             .disabled(store.isLoadingMessages)
                     }
                 }
@@ -73,6 +73,9 @@ struct ThreadSplitView: View {
                         }
                     }
                 }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                SidebarConnectionFooter(store: store)
             }
             .searchable(text: $search, prompt: "Search Threads")
             .onChange(of: search) { store.setThreadSearchQuery(search) }

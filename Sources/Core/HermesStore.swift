@@ -31,6 +31,8 @@ final class HermesStore {
     var isSending = false
     var isUploadingAttachment = false
     var threads: [HermesThread] = []
+    var loadedConversationCount = 0
+    var lastThreadsUpdatedAt: Date?
     var selectedThreadID: String?
     var selectedThreadTitle: String?
     var messages: [ChatMessage] = []
@@ -366,6 +368,8 @@ final class HermesStore {
         selectedThreadTitle = nil
         messages = []
         threads = []
+        loadedConversationCount = 0
+        lastThreadsUpdatedAt = nil
         listRequestID = UUID()
         isLoadingThreads = false
         hasLoadedThreads = false
