@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 struct KeychainCredentials {
-    private let service = "cc.wyderka.hermes-pocket.gateway"
+    private let service = "com.wydrox.hocket.gateway"
     private var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service,

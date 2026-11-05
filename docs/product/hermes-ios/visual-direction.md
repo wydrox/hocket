@@ -1,6 +1,6 @@
 # Visual direction: a quiet line to Hermes
 
-Hermes Pocket should feel like a direct conversation with an agent the user owns. System typography, generous reading space and restrained native controls keep long responses usable. The one memorable feature is a **route mark beside a text activity label**: two small endpoints joined by a short line, linking connection to the agent's current work. It is a utility signal, never a logo repeated through the transcript.
+hocket should feel like a direct conversation with an agent the user owns. System typography, generous reading space and restrained native controls keep long responses usable. The one memorable feature is a **route mark beside a text activity label**: two small endpoints joined by a short line, linking connection to the agent's current work. It is a utility signal, never a logo repeated through the transcript.
 
 ## Token plan
 

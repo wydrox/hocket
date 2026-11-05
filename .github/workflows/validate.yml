@@ -105,11 +105,13 @@ jobs:
             -configuration Debug \
             -destination "$TEST_DESTINATION" \
             -destination-timeout 120 \
+            -derivedDataPath build/DerivedData \
             -parallel-testing-enabled NO \
             -maximum-concurrent-test-simulator-destinations 1 \
             -resultBundlePath build/TestResults.xcresult \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=- \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=YES \
             2>&1 | tee build/xcodebuild-test.log
 
       - name: Export native screenshots
@@ -122,6 +124,16 @@ jobs:
               --output-path build/Screenshots
           fi
 
+      - name: Package the cloud-built simulator app
+        if: always()
+        shell: bash
+        run: |
+          if [[ -d build/DerivedData/Build/Products/Debug-iphonesimulator/HermesPocket.app ]]; then
+            ditto -c -k --sequesterRsrc --keepParent \
+              build/DerivedData/Build/Products/Debug-iphonesimulator/HermesPocket.app \
+              build/HermesPocket-Simulator.zip
+          fi
+
       - name: Upload simulator test evidence
         if: always()
         uses: actions/upload-artifact@v7.0.2
@@ -131,5 +143,6 @@ jobs:
             build/TestResults.xcresult
             build/xcodebuild-test.log
             build/Screenshots
+            build/HermesPocket-Simulator.zip
           if-no-files-found: warn
           retention-days: 7

@@ -103,7 +103,7 @@ struct ConnectionView: View {
                 .disabled(isConnecting || !hasCredentials)
             }
         }
-        .navigationTitle(isInitialSetup ? "Hermes Pocket" : "Edit Connection")
+        .navigationTitle(isInitialSetup ? "hocket" : "Edit Connection")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !isInitialSetup {

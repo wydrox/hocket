@@ -1,4 +1,4 @@
-# Flow specification: Hermes Pocket
+# Flow specification: hocket
 
 ## 0. Context
 

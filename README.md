@@ -1,4 +1,4 @@
-# Hermes Pocket
+# hocket
 
 A native SwiftUI iPhone and iPad client for an existing Hermes Agent gateway.
 The phone presents conversations and controls; Hermes keeps model credentials,
@@ -16,7 +16,8 @@ require the device to be connected to the same tailnet.
 
 - Search, create, open, rename, and archive conversation threads.
 - Stream replies, inspect tool activity, render Markdown and code, and stop a turn.
-- Attach system-selected photos and documents; staging is disclosed before upload.
+- Attach system-selected photos and documents; preview and share incoming images and files.
+- Restore unsent drafts after app restarts, scoped to account and profile.
 - Browse server commands and server-provided model, effort, and service-tier options.
 - Answer approval, clarification, and secure-input requests.
 - Reconnect using session snapshots and replay cursors; retain durable submission
@@ -31,7 +32,7 @@ Background push notifications and a phone-side agent runtime are not implemented
 - `project.yml` is the XcodeGen source; the generated project and shared scheme
   are checked in so Xcode Cloud needs no package installation.
 - Target: iOS/iPadOS 27+, Swift 6, no third-party app dependencies.
-- Bundle identifier: `com.wydrox.hermespocket`.
+- Bundle identifier: `com.wydrox.hocket`.
 - `ci_scripts/` prepares and verifies Xcode Cloud inputs and build numbering.
 - The manual **Validate iOS** GitHub workflow builds and runs unit tests in a
   hosted Xcode 27 environment. It does not sign or distribute an App Store build.

@@ -1,7 +1,16 @@
 # Mobile connection plan
 
-Read-only investigation, 2026-11-05. No services, listeners, credentials, networking,
-or Hermes configuration were changed. Commands below are a proposed operator plan.
+Investigation and deployment record, 2026-11-05. The investigation was read-only;
+the parent then applied the authorized route repair below. Hermes processes,
+credentials, and configuration were preserved.
+
+## Applied repair
+
+The existing tailnet HTTPS :8443 route now proxies to `127.0.0.1:55263`.
+Readback verified `/api/auth/providers` returns 200 and unauthenticated
+`/api/sessions` returns 401. HTTPS :443 still proxies to T3 at :3773.
+Authenticated chat and device acceptance remain unverified. The ephemeral-port
+lifetime limitation below still applies.
 
 ## Recommendation
 
@@ -27,7 +36,7 @@ The configured public hostname matches the existing Tailscale Serve hostname.
 | Config | `dashboard.public_url` is `https://rafals-mac-mini.tail71fdd0.ts.net:8443`. |
 | Config credential presence | Basic username configured: true; password hash configured: true; signing secret configured: true. Values were neither printed nor copied. |
 | Environment-file presence | Basic username override present: true; plaintext password override present: true. Values were neither printed nor copied. Nonempty environment password takes precedence over configured hash. |
-| Tailscale Serve | HTTPS :8443 proxies to `127.0.0.1:18481`, where no listener exists; route currently returns HTTP 502. HTTPS :443 separately proxies to T3 at :3773 and must be preserved. |
+| Tailscale Serve | Before repair: :8443 pointed at inactive :18481 and returned 502. After repair: :8443 points at live :55263; auth bootstrap 200, protected sessions 401 without credentials. HTTPS :443 remains T3 at :3773. |
 | Public Cloudflare ingress | Existing `pocket.wyderka.cc` points to dead `localhost:9220`; unrelated to this proposal and must remain untouched. |
 
 Evidence commands: listener inventory with `lsof`, endpoint-field-only configuration

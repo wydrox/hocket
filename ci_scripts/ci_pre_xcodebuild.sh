@@ -26,4 +26,4 @@ if [ "$(/usr/bin/grep -c '^CURRENT_PROJECT_VERSION = ' "$version_file")" -ne 1 ]
     exit 1
 fi
 /usr/bin/sed -i '' "s/^CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $CI_BUILD_NUMBER/" "$version_file"
-printf 'Building Hermes Pocket with CFBundleVersion %s.\n' "$CI_BUILD_NUMBER"
+printf 'Building hocket with CFBundleVersion %s.\n' "$CI_BUILD_NUMBER"

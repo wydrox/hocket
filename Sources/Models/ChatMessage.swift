@@ -8,4 +8,5 @@ struct ChatMessage: Identifiable, Codable, Sendable, Equatable {
     var status: MessageStatus = .complete
     var createdAt: Date?
     var toolName: String?
+    var attachments: [MessageAttachment] = []
 }

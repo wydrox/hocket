@@ -53,12 +53,21 @@ extension HermesStore {
             if let text = payload["text"].string { messages[assistantIndex(id: streamID)].reasoning = text }
         case "message.interim":
             let targetID = payload["already_streamed"].bool == true ? (sealedSegments[streamKey] ?? streamID) : streamID
-            if let text = payload["text"].string { messages[assistantIndex(id: targetID)].text = text }
+            if let text = payload["text"].string {
+                let projection = AttachmentProjection.extract(text)
+                let index = assistantIndex(id: targetID)
+                messages[index].text = projection.text
+                messages[index].attachments = projection.attachments
+            }
             if targetID == streamID { sealSegment(streamID, key: streamKey) }
         case "message.complete":
             let targetID = payload["response_reused"].bool == true ? (sealedSegments[streamKey] ?? streamID) : streamID
             let index = assistantIndex(id: targetID)
-            if let finalText = payload["text"].string { messages[index].text = finalText }
+            if let finalText = payload["text"].string {
+                let projection = AttachmentProjection.extract(finalText)
+                messages[index].text = projection.text
+                messages[index].attachments = projection.attachments
+            }
             messages[index].status = payload["status"].string == "error" || !(payload["error"].string ?? "").isEmpty ? .failed : .complete
             isStreaming = false
             if let warning = payload["warning"].string, !warning.isEmpty { lastError = warning }
@@ -78,7 +87,12 @@ extension HermesStore {
             let messageID = "tool:\(id):\(toolID)"
             if let index = messages.firstIndex(where: { $0.id == messageID }) {
                 messages[index].text = payload["summary"].string ?? payload["result_text"].string ?? payload["message"].string ?? messages[index].text
-                if type == "tool.complete" { messages[index].status = .complete }
+                if type == "tool.complete" {
+                    let projection = AttachmentProjection.extract(messages[index].text)
+                    messages[index].text = projection.text
+                    messages[index].attachments = projection.attachments
+                    messages[index].status = .complete
+                }
             }
         case "approval.request", "clarify.request": enqueuePrompt(payload, sessionID: id)
         case "approval.settled", "clarify.settled":

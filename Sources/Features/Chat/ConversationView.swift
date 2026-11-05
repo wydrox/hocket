@@ -43,10 +43,14 @@ struct ConversationView: View {
                         ContentUnavailableView("Start a Conversation", systemImage: "bubble.left.and.bubble.right", description: Text("Send a message or add an attachment."))
                     }
                     ForEach(store.messages) { message in
-                        MessageRow(message: message) {
-                            Task { await store.retryMessage(message.id) }
-                        }
-                        .id(message.id)
+                        let downloadSessionID = store.selectedThreadID
+                        let downloadAccountID = store.accountID
+                        MessageRow(message: message, retry: { Task { await store.retryMessage(message.id) } },
+                            canDownload: { store.canDownload($0) }, download: { attachment in
+                                guard let id = downloadSessionID, store.accountID == downloadAccountID else { return nil }
+                                return await store.downloadAttachment(attachment, sessionID: id)
+                            })
+                        .id("\(store.accountID):\(store.profileID):\(store.selectedThreadID ?? ""):\(message.id)")
                     }
                     if let interaction = store.pendingInteraction {
                         InteractionPanel(interaction: interaction, store: store)
@@ -95,6 +99,9 @@ struct ConversationView: View {
         }
         .navigationTitle(thread?.title.isEmpty == false ? thread?.title ?? "Conversation" : "Conversation")
         .navigationBarTitleDisplayMode(.inline)
+        .environment(\.openURL, OpenURLAction { url in
+            MessageAttachment.safeExternalURL(url.absoluteString) == nil ? .discarded : .systemAction
+        })
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("Session Options", systemImage: "slider.horizontal.3") { showsSession = true }

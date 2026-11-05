@@ -8,6 +8,7 @@ struct SessionOptionsView: View {
     @State private var effort = ""
     @State private var serviceTier = ""
     @State private var isSaving = false
+    @State private var modelConfirmation: ModelSelectionConfirmation?
 
     private var providers: [String] { Set(store.models.map(\.provider)).sorted() }
     private var filteredModels: [ModelOption] { store.models.filter { provider.isEmpty || $0.provider == provider } }
@@ -65,7 +66,7 @@ struct SessionOptionsView: View {
             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(isSaving) }
             if store.supportsModelControls {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isSaving ? "Saving…" : "Save Changes", action: save)
+                    Button(isSaving ? "Saving…" : "Save Changes") { save() }
                         .disabled(isSaving || store.connection != .connected || !store.models.contains(where: { $0.id == model }))
                 }
             }
@@ -86,19 +87,25 @@ struct SessionOptionsView: View {
             if !tiers.contains(serviceTier) { serviceTier = tiers.first ?? "" }
         }
         .interactiveDismissDisabled(isSaving)
+        .alert("Review Model Change", isPresented: Binding(
+            get: { modelConfirmation != nil },
+            set: { if !$0 { modelConfirmation = nil } }
+        ), presenting: modelConfirmation) { confirmation in
+            Button("Cancel", role: .cancel) { }
+            Button("Change Model") { save(confirmation: confirmation.token) }
+        } message: { confirmation in
+            Text(confirmation.message)
+        }
     }
 
-    private func save() {
+    private func save(confirmation: String? = nil) {
         guard !isSaving else { return }
         isSaving = true
         store.lastError = nil
-        store.selectedModel = model
-        store.selectedEffort = effort
-        store.selectedServiceTier = serviceTier
         Task {
-            await store.updateModelSettings()
+            modelConfirmation = await store.updateModelSettings(model: model, effort: effort, tier: serviceTier, confirmation: confirmation)
             isSaving = false
-            if store.lastError == nil { dismiss() }
+            if store.lastError == nil, modelConfirmation == nil { dismiss() }
         }
     }
 }

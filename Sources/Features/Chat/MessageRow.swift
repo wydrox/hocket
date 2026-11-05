@@ -4,12 +4,15 @@ import UIKit
 struct MessageRow: View {
     let message: ChatMessage
     let retry: () -> Void
+    let canDownload: (MessageAttachment) -> Bool
+    let download: (MessageAttachment) async -> URL?
 
     @ContentBuilder
     var body: some View {
         if message.role == .tool {
             DisclosureGroup {
                 MarkdownMessageView(text: message.text)
+                attachmentCards
             } label: {
                 Label(message.toolName ?? "Tool Activity", systemImage: "wrench.and.screwdriver")
                     .font(.subheadline)
@@ -24,6 +27,7 @@ struct MessageRow: View {
                     Spacer(minLength: 0)
                 }
                 if !message.text.isEmpty { MarkdownMessageView(text: message.text) }
+                attachmentCards
                 if !message.reasoning.isEmpty {
                     DisclosureGroup("Reasoning") {
                         MarkdownMessageView(text: message.reasoning)
@@ -61,6 +65,12 @@ struct MessageRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .contain)
+        }
+    }
+
+    private var attachmentCards: some View {
+        ForEach(message.attachments) { attachment in
+            MessageAttachmentView(attachment: attachment, canDownload: canDownload(attachment)) { await download(attachment) }
         }
     }
 

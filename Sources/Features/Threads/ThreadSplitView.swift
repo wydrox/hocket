@@ -79,7 +79,7 @@ struct ThreadSplitView: View {
                             .buttonStyle(.borderedProminent)
                             .disabled(store.connection != .connected || isCreating)
                     }
-                    .navigationTitle("Hermes Pocket")
+                    .navigationTitle("hocket")
                 }
             }
         }

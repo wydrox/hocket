@@ -82,8 +82,8 @@ extension HermesStore {
             // Accepted admissions are represented by the server snapshot. Only unacknowledged
             // local inputs need a retry bubble; never duplicate an accepted user row by text.
             if submission.admissionID == nil, !persistedSubmissionIDs.contains(submission.id) {
-                messages.append(ChatMessage(id: submission.id, role: .user, text: submission.text,
-                    status: .failed, createdAt: submission.createdAt))
+                messages.append(ChatMessage(id: submission.id, role: .user, text: AttachmentProjection.extract(submission.text).text,
+                    status: .failed, createdAt: submission.createdAt, attachments: submission.attachments.map(MessageAttachment.staged)))
             }
         }
         interactions.removeAll { $0.sessionID == id }
@@ -140,6 +140,7 @@ extension HermesStore {
         if requiresGeneration { params["expected_generation"] = .integer(cursor.generation) }
         do {
             let result = try await transport.call("session.mutate", params: params)
+            if let confirmation = ModelSelectionConfirmation(result) { throw confirmation }
             cursors[id]?.revision = result["revision"].int ?? cursor.revision
             cursors[id]?.generation = result["execution_generation"].int ?? cursor.generation
             if selectedThreadID == id { try await resume(id) }
@@ -161,10 +162,10 @@ extension HermesStore {
 
     nonisolated static func message(_ row: JSONValue, fallbackID: String) -> ChatMessage? {
         guard let roleString = row["role"].string, let role = MessageRole(rawValue: roleString) else { return nil }
-        let content = row["content"]
-        let text = content.string ?? content.array?.compactMap { $0["text"].string }.joined(separator: "\n") ?? row["text"].string ?? ""
+        let projection = AttachmentProjection.message(row)
         return ChatMessage(id: row["row_id"].identifier.map { "row:\($0)" } ?? row["id"].identifier ?? fallbackID,
-            role: role, text: text, reasoning: row["reasoning"].string ?? "", createdAt: date(row["timestamp"]), toolName: row["name"].string)
+            role: role, text: projection.text, reasoning: row["reasoning"].string ?? "", createdAt: date(row["timestamp"]), toolName: row["name"].string,
+            attachments: projection.attachments)
     }
 
     func reconcileReceipts(sessionID: String) async throws {

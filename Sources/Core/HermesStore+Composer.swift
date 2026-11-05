@@ -28,7 +28,8 @@ extension HermesStore {
             submissions.append(submission)
             do { try journal.save(submissions) }
             catch { submissions.removeAll { $0.id == submission.id }; throw error }
-            messages.append(ChatMessage(id: submission.id, role: .user, text: draft, status: .pending, createdAt: submission.createdAt))
+            messages.append(ChatMessage(id: submission.id, role: .user, text: draft, status: .pending, createdAt: submission.createdAt,
+                attachments: selectedAttachments.map(MessageAttachment.staged)))
             try await submit(submission)
             clearAcknowledgedDraft(scope: sentScope, sessionID: sessionID, text: draft, sentAttachments: selectedAttachments)
         } catch { report(error) }

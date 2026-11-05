@@ -1,6 +1,6 @@
-# Hermes Pocket — native product brief
+# hocket — native product brief
 
-Mode: **Build**. Target: a native SwiftUI iPhone/iPad client for the user's Hermes agent, replacing the Telegram interaction surface. Provisional display name: **Hermes Pocket**; provisional bundle ID: `com.wydrox.hermespocket`. Date: 2026-11-05.
+Mode: **Build**. Target: a native SwiftUI iPhone/iPad client for the user's Hermes agent, replacing the Telegram interaction surface. Display name: **hocket**; bundle ID: `com.wydrox.hocket`. Date: 2026-11-05.
 
 The product thesis is a quiet messenger that keeps the conversation central and makes the agent's actual work, connection, and permission requests easy to understand.
 

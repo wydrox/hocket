@@ -1,4 +1,4 @@
-# Hermes Pocket cloud build
+# hocket cloud build
 
 The repository contains the generated `HermesPocket.xcodeproj`, the shared `HermesPocket` scheme, and the XcodeGen source specification in `project.yml`. Xcode Cloud builds the checked-in project directly; it does not install XcodeGen or any package dependency. Regenerate the project with `xcodegen generate` after adding source files or changing the specification, then commit both.
 
@@ -6,8 +6,8 @@ The repository contains the generated `HermesPocket.xcodeproj`, the shared `Herm
 
 | Setting | Value |
 | --- | --- |
-| App | Hermes Pocket |
-| Bundle ID | `com.wydrox.hermespocket` |
+| App | hocket |
+| Bundle ID | `com.wydrox.hocket` |
 | Team | `7S3F9767BM` |
 | Deployment | iOS 27.0, iPhone and iPad |
 | Cloud toolchain | Xcode 27.2 (`27B52`), verified available November 5, 2026 |
@@ -17,7 +17,7 @@ The repository contains the generated `HermesPocket.xcodeproj`, the shared `Herm
 
 ## Workflow configuration
 
-Onboard the product and its first workflow in **Xcode**, named **Hermes Pocket · TestFlight**. After onboarding, manage workflows in App Store Connect, Xcode, or the supported API. Workflow configuration lives in Apple's service; a local scheme alone does not create it.
+Onboard the product and its first workflow in **Xcode**, named **hocket · TestFlight**. After onboarding, manage workflows in App Store Connect, Xcode, or the supported API. Workflow configuration lives in Apple's service; a local scheme alone does not create it.
 
 1. Connect this repository and select `HermesPocket.xcodeproj`, shared scheme `HermesPocket`, and Xcode 27.2. Use the macOS version compatible with that toolchain.
 2. Start manually for the first build on the committed product branch. Keep pull-request and scheduled triggers off initially to avoid unrelated build usage.
@@ -61,9 +61,9 @@ Verified November 5, 2026, using read-only requests and Apple's official [OpenAP
 | `/v1/ciWorkflows` | POST |
 | `/v1/ciBuildRuns` | POST |
 
-There is no supported public create-product or create-app-record endpoint in that specification. The authenticated product listing returned one existing product, OpenPing Mobile, with no next page; Hermes Pocket was absent. An existing team's Cloud product does not onboard this new product automatically.
+There is no supported public create-product or create-app-record endpoint in that specification. The initial authenticated product listing returned one existing product, OpenPing Mobile, with no next page; hocket required separate onboarding. An existing team's Cloud product does not onboard this new product automatically.
 
-Apple explicitly requires initial configuration in Xcode in [Configuring your first Xcode Cloud workflow](https://developer.apple.com/documentation/xcode/configuring-your-first-xcode-cloud-workflow) and the [workflow reference](https://developer.apple.com/documentation/xcode/xcode-cloud-workflow-reference). Open this project in Xcode, use Report navigator → Cloud → Get Started (or Integrate → Create Workflow), select Hermes Pocket and its team, and grant the new repository access. The assistant can create a matching app record when the account has permission. Repository authorization can open a browser and require an App Store Connect sign-in. An API key alone cannot complete this initial UI onboarding.
+Apple explicitly requires initial configuration in Xcode in [Configuring your first Xcode Cloud workflow](https://developer.apple.com/documentation/xcode/configuring-your-first-xcode-cloud-workflow) and the [workflow reference](https://developer.apple.com/documentation/xcode/xcode-cloud-workflow-reference). Open this project in Xcode, use Report navigator → Cloud → Get Started (or Integrate → Create Workflow), select hocket and its team, and grant the new repository access. The assistant can create a matching app record when the account has permission. Repository authorization can open a browser and require an App Store Connect sign-in. An API key alone cannot complete this initial UI onboarding.
 
 After the product exists, use the public API to create/update workflows, start builds, and read status. Do not repurpose an unrelated existing product or repository as an onboarding workaround.
 
@@ -72,4 +72,4 @@ After the product exists, use the public API to create/update workflows, start b
 
 `.github/workflows/validate.yml` runs only on manual dispatch. It uses the [GA standard `xcode-27` runner](https://github.blog/changelog/2026-10-15-xcode-27-runner-image-generally-available/), one test job, a 20-minute timeout, and one available iPhone simulator with iOS 27 or later. The job selects the newest installed stable Xcode 27.x and fails clearly if the toolchain or simulator is missing; it never installs a toolchain. The older `macos-26` image is not an appropriate Xcode 27 fallback.
 
-The job disables simulator signing, runs the shared scheme's unit tests, and always attempts to upload the `.xcresult` and build log with seven-day retention. It uses no signing credentials, larger runners, or third-party hosted services. Dispatch it for the exact pushed branch and record its commit SHA and result. This workflow validates build/tests only. Xcode Cloud remains the intended signed archive and TestFlight pipeline.
+The job uses ad-hoc simulator signing so Keychain entitlements work, runs the shared scheme's unit and onboarding UI tests, and exports screenshots, the simulator app, `.xcresult`, and logs with seven-day retention. It uses no signing credentials, larger runners, or third-party hosted services. Dispatch it for the exact pushed branch and record its commit SHA and result. This workflow validates build/tests only. Xcode Cloud remains the intended signed archive and TestFlight pipeline.

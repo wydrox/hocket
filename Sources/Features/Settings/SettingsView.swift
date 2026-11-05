@@ -33,7 +33,7 @@ struct SettingsView: View {
                 NavigationLink("Help and Privacy", value: Destination.help)
                 LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")
                 LabeledContent("Build", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—")
-            } header: { Text("Hermes Pocket") } footer: {
+            } header: { Text("hocket") } footer: {
                 Text("A native connection to your Hermes agent.")
             }
         }

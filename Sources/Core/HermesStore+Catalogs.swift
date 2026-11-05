@@ -46,17 +46,15 @@ extension HermesStore {
         selectedServiceTier = info["service_tier"].string ?? "normal"
     }
 
-    func updateModelSettings() async {
+    func updateModelSettings(model desiredModel: String, effort desiredEffort: String, tier desiredTier: String, confirmation: String? = nil) async -> ModelSelectionConfirmation? {
         lastError = nil
-        let desiredModel = selectedModel
-        let desiredEffort = selectedEffort
-        let desiredTier = selectedServiceTier
         do {
             guard let id = selectedThreadID, let model = models.first(where: { $0.id == desiredModel }) else { throw GatewayError.missingSession }
-            guard desiredEffort.isEmpty || availableEfforts.contains(desiredEffort) else { throw GatewayError.invalidResponse("This model does not advertise the selected reasoning option.") }
-            guard availableServiceTiers.contains(desiredTier) else { throw GatewayError.invalidResponse("This model does not advertise the selected service tier.") }
+            guard desiredEffort.isEmpty || availableEfforts(for: desiredModel).contains(desiredEffort) else { throw GatewayError.invalidResponse("This model does not advertise the selected reasoning option.") }
+            guard availableServiceTiers(for: desiredModel).contains(desiredTier) else { throw GatewayError.invalidResponse("This model does not advertise the selected service tier.") }
             var payload: [String: JSONValue] = ["model": .string(model.name), "provider": .string(model.provider)]
             if !desiredEffort.isEmpty { payload["reasoning"] = .string(desiredEffort) }
+            if let confirmation { payload["confirm"] = .string(confirmation) }
             try await mutate(id, operation: "model", payload: payload, requiresGeneration: true)
             if model.supportsReasoning {
                 try await mutate(id, operation: "reasoning", payload: ["effort": desiredEffort.isEmpty ? .null : .string(desiredEffort)], requiresGeneration: true)
@@ -65,6 +63,13 @@ extension HermesStore {
             let info = try await transport.call("session.info", params: ["session_id": .string(id)])
             applyInfo(info)
             await loadCatalogs()
+        } catch let guardrail as ModelSelectionConfirmation {
+            guard !guardrail.token.isEmpty else {
+                report(GatewayError.invalidResponse("Hermes requested model confirmation without a valid confirmation token. Refresh the session and try again."))
+                return nil
+            }
+            return guardrail
         } catch { report(error) }
+        return nil
     }
 }

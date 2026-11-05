@@ -4,14 +4,14 @@ Updated 2026-11-05. This file records observed states, not intended configuratio
 
 | Item | Observed state |
 | --- | --- |
-| GitHub repository | Private `wydrox/hermes-pocket` created |
-| Apple bundle identity | Registered `com.wydrox.hermespocket`, identifier `G5YVGRJB3Z`, team `7S3F9767BM` |
-| App Store Connect app record | Blocked: browser signed out; public API rejects app CREATE |
-| Xcode Cloud product/workflow | Not created: first workflow requires Xcode onboarding |
+| GitHub repository | Private [`wydrox/hocket`](https://github.com/wydrox/hocket) created |
+| Apple bundle identity | Registered `com.wydrox.hocket`, identifier `3V6VXDQ827`, team `7S3F9767BM` |
+| App Store Connect app record | Created via Helium: `6831068473`, store name `hocket: Hermes Agent` |
+| Xcode Cloud product/workflow | Onboarding in progress in Xcode; not yet active |
 | Cloud toolchain | ASC API lists Xcode 27.2, build 27B52 |
-| Xcode local onboarding | Waiting for other system installation tasks |
+| Xcode local onboarding | System setup completed; saved developer account accessible |
 | Local compile/test | NOT_RUN: cloud-only validation requested |
-| Cloud compile/test | Pending source completion and first dispatch |
+| Cloud compile/test | Run `42000749005`: app compiled and 18 unit tests passed; 3 UI tests failed on inaccessible selectors and unsigned simulator Keychain. Corrections await next cloud run. |
 | Signed archive/upload | NOT_RUN |
 | Device/UI/VoiceOver acceptance | NOT_RUN |
 | TestFlight | No build distributed |
@@ -29,10 +29,10 @@ An authenticated credential-broker smoke test timed out before returning a
 result. No real Hermes password or token was retrieved or embedded in the app.
 Live authenticated chat, model calls, and attachment transfer remain unverified.
 
-## Apple release blocker
+## Apple onboarding
 
-Both the shared preview and existing Helium account profile are signed out.
-The installed App Store Connect API key can register bundle identifiers and read
-the account, but `POST /v1/apps` returns 403: the resource does not allow CREATE.
-The public API also cannot create the initial Xcode Cloud product. Initial
-account onboarding is still required before an actual TestFlight build can exist.
+The authenticated Helium RAFAL profile created the App Store Connect record.
+Apple rejected the bare names `Hermes Pocket` and `hocket` as already used;
+the accepted store name is `hocket: Hermes Agent`, with device display name `hocket`.
+The public API still cannot create the initial Xcode Cloud product; native Xcode
+onboarding is in progress. No signed archive or TestFlight build exists yet.
