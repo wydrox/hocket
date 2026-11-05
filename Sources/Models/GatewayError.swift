@@ -12,7 +12,9 @@ enum GatewayError: Error, LocalizedError {
         case .unsupportedAuthority: "This server does not offer the canonical Hermes session gateway."
         case .missingSession: "Open or create a conversation first."
         case .invalidResponse(let message), .storage(let message): message
-        case .authentication(let status): "Hermes sign-in failed (HTTP \(status)). Check the endpoint and access token."
+        case .authentication(401): "Hermes rejected this sign-in. Check your Hermes username and password or access token."
+        case .authentication(403): "This account does not have permission to access Hermes. Check access with the server owner."
+        case .authentication(let status): "Hermes sign-in failed (HTTP \(status)). Check the server address and try again."
         }
     }
 }

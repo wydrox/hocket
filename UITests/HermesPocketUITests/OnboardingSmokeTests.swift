@@ -39,7 +39,7 @@ final class OnboardingSmokeTests: XCTestCase {
         if signIn.isEnabled {
             signIn.tap()
             let validation = app.staticTexts[
-                "Enter a valid HTTPS server address without credentials or query parameters."
+                "Enter an HTTPS origin without a path, credentials, query, or fragment."
             ]
             reveal(validation, in: app)
             XCTAssertTrue(validation.waitForExistence(timeout: 10))
@@ -54,6 +54,8 @@ final class OnboardingSmokeTests: XCTestCase {
         XCTAssertEqual(address.value as? String, "https://hermes.example.com")
         reveal(signIn, in: app)
         XCTAssertTrue(signIn.isEnabled)
+        XCTAssertFalse(app.staticTexts["Enter an HTTPS origin without a path, credentials, query, or fragment."].exists,
+                       "Correcting the address must clear the previous validation error.")
         // Deliberately do not submit a valid endpoint: no backend or real account
         // is part of this onboarding smoke test.
 
@@ -88,6 +90,61 @@ final class OnboardingSmokeTests: XCTestCase {
         reveal(textField("Username", in: app), in: app)
         XCTAssertTrue(textField("Username", in: app).waitForExistence(timeout: 10))
         attachScreenshot(app, name: "Onboarding-Requested-Dark")
+    }
+
+    func testSetupGuideAndReturnToEnteredAddress() {
+        let app = launchOnboarding(style: "Light")
+        let address = textField("https://hermes.example.com", in: app)
+        address.tap()
+        address.typeText("https://hermes.example.com")
+        let setup = app.buttons["Set Up Hermes"]
+        reveal(setup, in: app, direction: .down)
+        setup.tap()
+        XCTAssertTrue(app.navigationBars["Set Up Hermes"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Prepare Hermes"].exists)
+        attachScreenshot(app, name: "Setup-Prepare-Hermes")
+
+        let desktopHelp = app.buttons["Where to Click in Hermes"]
+        reveal(desktopHelp, in: app)
+        desktopHelp.tap()
+        let actualPath = app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Settings → Web access")).firstMatch
+        reveal(actualPath, in: app)
+        XCTAssertTrue(actualPath.exists)
+        attachScreenshot(app, name: "Setup-Hermes-Desktop-Steps")
+        reveal(desktopHelp, in: app, direction: .down)
+        desktopHelp.tap()
+
+        let next = app.buttons["setup.continue"]
+        reveal(next, in: app)
+        next.tap()
+        XCTAssertTrue(app.staticTexts["Connect Your Device"].waitForExistence(timeout: 10))
+        attachScreenshot(app, name: "Setup-Connect-Device")
+        reveal(next, in: app)
+        next.tap()
+        XCTAssertTrue(app.staticTexts["Sign In to Hermes"].waitForExistence(timeout: 10))
+        attachScreenshot(app, name: "Setup-Sign-In")
+        reveal(next, in: app)
+        next.tap()
+        XCTAssertTrue(app.navigationBars["hocket"].waitForExistence(timeout: 10))
+        reveal(address, in: app, direction: .down)
+        XCTAssertEqual(address.value as? String, "https://hermes.example.com", "Reading setup help must preserve the entered server address.")
+        // The guide and validation checks do not contact this dummy address.
+    }
+
+    func testLargestDynamicTypeSetupGuideCanContinueAndClose() {
+        let app = launchOnboarding(style: "Dark", largestDynamicType: true)
+        let setup = app.buttons["Set Up Hermes"]
+        reveal(setup, in: app, direction: .down)
+        setup.tap()
+        XCTAssertTrue(app.navigationBars["Set Up Hermes"].waitForExistence(timeout: 10))
+        attachScreenshot(app, name: "Setup-Dark-Accessibility-XXXL")
+        let next = app.buttons["setup.continue"]
+        reveal(next, in: app)
+        XCTAssertTrue(next.isHittable)
+        next.tap()
+        XCTAssertTrue(app.staticTexts["Connect Your Device"].waitForExistence(timeout: 10))
+        app.buttons["Close"].tap()
+        XCTAssertTrue(app.navigationBars["hocket"].waitForExistence(timeout: 10))
     }
 
     func testLargestDynamicTypeOnboardingScreenshot() {

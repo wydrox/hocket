@@ -1,9 +1,12 @@
 import SwiftUI
 
 struct HelpView: View {
+    @State private var showsSetup = false
+
     var body: some View {
         Form {
             Section("Connect to Your Server") {
+                Button("Set Up Hermes", systemImage: "list.number") { showsSetup = true }
                 Text("Use a secure HTTPS address reachable from your device and sign in to your Hermes server. If your server is private, connect your device to its VPN first.")
                 Text("A connection can pause when hocket is in the background. Reopen the app to reconnect and check the latest state.")
             }
@@ -24,5 +27,6 @@ struct HelpView: View {
         }
         .navigationTitle("Help and Privacy")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showsSetup) { ConnectionGuideView() }
     }
 }

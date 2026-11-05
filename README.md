@@ -12,6 +12,13 @@ advanced bearer-token option. Passwords are used only for sign-in; access and
 refresh tokens are stored in the device Keychain. Private Tailscale addresses
 require the device to be connected to the same tailnet.
 
+Tap **Set Up Hermes** on the connection screen for a three-step guide. It explains
+the actual Desktop **Settings → Web access** controls, the separate password
+provider requirement, Tailscale access, and which credentials to use. The same
+guide is available in **Settings → Help and Privacy**. **Check Server** reads public
+sign-in options without a password or chat request. Nous browser sign-in is not
+supported in this beta; Web access alone does not enable hocket password login.
+
 ## Native features
 
 - Search, create, open, rename, and archive conversation threads.
