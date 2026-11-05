@@ -17,7 +17,13 @@ The repository contains the generated `HermesPocket.xcodeproj`, the shared `Herm
 
 ## Workflow configuration
 
-Onboard the product and its first workflow in **Xcode**, named **hocket · TestFlight**. After onboarding, manage workflows in App Store Connect, Xcode, or the supported API. Workflow configuration lives in Apple's service; a local scheme alone does not create it.
+The product is onboarded through **Xcode** and connected to `wydrox/hocket`.
+The saved workflow is **hocket · TestFlight**, ID `662108ED-715A-440E-B46A-8501DC219743`.
+Its required Test action uses one iPhone 18 Pro with the current Xcode's iOS 27.2 runtime.
+Its Archive action prepares an internal-only TestFlight build; the internal-testing
+post-action targets **hocket Internal**, with the owner as its sole tester.
+The first full run starts manually. Workflow configuration lives in Apple's service;
+a local scheme alone does not create it. The following settings document that configuration:
 
 1. Connect this repository and select `HermesPocket.xcodeproj`, shared scheme `HermesPocket`, and Xcode 27.2. Use the macOS version compatible with that toolchain.
 2. Start manually for the first build on the committed product branch. Keep pull-request and scheduled triggers off initially to avoid unrelated build usage.
@@ -73,3 +79,31 @@ After the product exists, use the public API to create/update workflows, start b
 `.github/workflows/validate.yml` runs only on manual dispatch. It uses the [GA standard `xcode-27` runner](https://github.blog/changelog/2026-10-15-xcode-27-runner-image-generally-available/), one test job, a 20-minute timeout, and one available iPhone simulator with iOS 27 or later. The job selects the newest installed stable Xcode 27.x and fails clearly if the toolchain or simulator is missing; it never installs a toolchain. The older `macos-26` image is not an appropriate Xcode 27 fallback.
 
 The job uses ad-hoc simulator signing so Keychain entitlements work, runs the shared scheme's unit and onboarding UI tests, and exports screenshots, the simulator app, `.xcresult`, and logs with seven-day retention. It uses no signing credentials, larger runners, or third-party hosted services. Dispatch it for the exact pushed branch and record its commit SHA and result. This workflow validates build/tests only. Xcode Cloud remains the intended signed archive and TestFlight pipeline.
+
+
+## Prepared cloud TestFlight fallback
+
+The manual `Cloud TestFlight fallback · hocket` workflow is an independent cloud-only
+archive and upload path while Xcode Cloud repository authorization is incomplete.
+It requires a successful run of this repository's `validate.yml`, the exact full
+source SHA from that run, and a new build number. The workflow verifies those
+values before checking out the app. Workflow configuration and app source can be
+on different commits; the archive uses exactly the validated app commit.
+
+It uses automatic development signing for the archive and Apple cloud-managed
+distribution signing for an internal-only TestFlight upload. The private repository
+holds `ASC_PRIVATE_KEY`, `ASC_KEY_ID`, and `ASC_ISSUER_ID` as Actions secrets. The
+`hocket-release` team API key has the Admin role; Apple team keys apply to all apps
+in the team, despite this key's dedicated name. The downloaded `.p8` is also kept
+in the account's existing private-key directory with mode 0600, outside this repo.
+No Apple key is embedded in the iOS app. Runner key material is deleted after use.
+
+The workflow does not revoke signing certificates, retry failed release operations,
+submit an App Store review, or invite external testers. Upload success still needs
+separate App Store Connect processing and internal-group readback. The group is
+`hocket Internal`; only the requesting owner's account is enrolled.
+
+After Xcode Cloud is authorized, set its next build number above any uploaded
+fallback build before starting it. Once the fallback is retired, remove its three
+Actions secrets and revoke only the dedicated `hocket-release` API key. Do not
+revoke unrelated certificates or the pre-existing `revision-upload` key.

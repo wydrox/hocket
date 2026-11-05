@@ -1,16 +1,16 @@
 # Verification record
 
-Design artifacts only as of 2026-11-05. No simulator/device, live-server, screenshot, Xcode Cloud, TestFlight or App Store verification was performed by the design task. Do not present this checklist as completed acceptance.
+Evidence updated 2026-11-05. Specification and static review are complete; cloud unit tests and partial onboarding UI results exist. Live-server flows, full-screen accessibility, signed distribution and device acceptance remain separate unverified tiers.
 
 | Evidence tier | Status | Required completion evidence |
 |---|---|---|
 | Product specification | Complete | Four linked artifacts, all principal screen states, capability boundaries and ethics decisions. |
-| Contract alignment | Pending | Compare each feature and value source with the independent real-server contract report; update copy/scope for absent capabilities. |
-| Static implementation review | NOT_RUN | SwiftUI/API review, Keychain and endpoint handling, privacy declarations, stable message identity and state transitions. |
-| Native visual QA | NOT_RUN | Actual screenshots at smallest supported iPhone, larger iPhone, regular iPad and narrow iPad window. |
-| Accessibility | NOT_RUN | Accessibility Inspector, VoiceOver traversal, largest text, keyboard, light/dark/increased contrast/reduced motion. |
+| Contract alignment | Complete against installed canonical gateway source | Compare each feature and value source with the independent real-server contract report; update copy/scope for absent capabilities. |
+| Static implementation review | Completed with attachment/model-confirmation fixes | SwiftUI/API review, Keychain and endpoint handling, privacy declarations, stable message identity and state transitions. |
+| Native visual QA | Partial: cloud iPhone Duo onboarding captures inspected; remaining screens/devices NOT_RUN | Actual screenshots at smallest supported iPhone, larger iPhone, regular iPad and narrow iPad window. |
+| Accessibility | Partial: actual dark and largest-text captures inspected; largest-text field/action traversal passed on Duo. One light-mode test helper correction awaits its result; VoiceOver NOT_RUN | Accessibility Inspector, VoiceOver traversal, largest text, keyboard, light/dark/increased contrast/reduced motion. |
 | Real server flows | NOT_RUN | Connection, actual threads/history, send/stream/reconcile, attachments, settings readback, commands and approvals as supported. |
-| Xcode Cloud | NOT_RUN | Correct committed revision, workflow, successful signed archive and distribution logs. |
+| Xcode Cloud | Product and Test/Archive/internal-distribution workflow configured; full run pending | Correct committed revision, workflow, successful signed archive and distribution logs. |
 | TestFlight | NOT_RUN | App Store Connect processed build and intended tester availability; device install/open separately recorded if performed. |
 
 ## Native acceptance checklist
@@ -35,7 +35,7 @@ Design artifacts only as of 2026-11-05. No simulator/device, live-server, screen
 
 ## Scorecard and issue routing
 
-Information / Meaning / Time / Memory: **not scored before a built walkthrough**. Ethics: **spec passes, implementation pending**. Accessibility: **not verified**.
+Information / Meaning / Time / Memory: **not scored before a complete built walkthrough**. Ethics: **spec and static checks reviewed, live flows pending**. Accessibility: **partial onboarding evidence only**.
 
 Route structure/copy issues to flow spec, wrong controls to component map, visual issues to visual direction, and behavior failures to implementation. All P0 completion, privacy, misleading-state or accessibility failures and P1 material friction must be resolved before claiming product acceptance. A successful build does not satisfy runtime or TestFlight acceptance.
 
