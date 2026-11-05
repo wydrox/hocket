@@ -7,19 +7,26 @@ Verified 2026-11-05. These are observed release states, not planned outcomes.
 | Repository | Private [wydrox/hocket](https://github.com/wydrox/hocket), default branch `main` |
 | App | `hocket: Hermes Agent`, Apple ID `6831068473`; device display name `hocket` |
 | Bundle / team | `com.wydrox.hocket` / `7S3F9767BM` |
-| Version | **1.0.0 (2)**, iOS/iPadOS 27+ |
-| Released source | `592f1d875edfaeb7f984a6234136a2ca6a5940a4` |
-| Xcode Cloud | Build 2 `9e86f6b4-b959-4e27-a03d-4a0d4e610127`, **SUCCEEDED** at 10:55:39 UTC |
-| Cloud tests | **34 passed**: 31 unit tests and 3 onboarding UI tests, iPhone 18 Pro / iOS 27.2 |
+| Version | **1.0.1 (5)**, iOS/iPadOS 27+ |
+| Released source | `4798d93b516db2c0ba1e02e931027fe4d73674bb`, branch `fix/review4-thread-list-chat` |
+| Xcode Cloud | Build 5 `d5294461-810e-4b2d-8272-4a7fecac2913`, **SUCCEEDED** at 12:26:52 UTC |
+| Cloud tests | **56 passed**: 51 unit tests and 5 onboarding UI tests, iPhone 18 Pro / iOS 27.2 |
 | Archive and signing | **SUCCEEDED** in Xcode Cloud, Xcode 27.2 (`27B52`) |
-| Apple processing | **VALID**, internal-only build `ffcb86f8-6a0a-40c0-bdc5-63620097147d` |
-| TestFlight distribution | Cloud post-action **SUCCEEDED**; build 2 read back in `hocket Internal` |
-| Tester | Requesting owner's account enrolled; current state **INSTALLED** |
-| Device installation | App Store Connect reports 1.0.0 (2) installed on iPad Pro 11-inch (M4), iOS 27.0 |
+| Apple processing | **VALID**, internal-only build `a6b287e9-2158-4687-8936-6fe395c281c7` |
+| TestFlight distribution | Cloud post-action **SUCCEEDED**; build 5 read back in `hocket Internal`, state **IN_BETA_TESTING**, at 12:27:45 UTC |
+| Tester | Existing internal group preserved; installation of build 5 has not been verified |
+| Device installation | **NOT_RUN for build 5**. Historical readback reported 1.0.0 (2) installed on iPad Pro 11-inch (M4), iOS 27.0 |
 | Local builds/tests | **NOT_RUN**; all compilation and test execution took place in the cloud |
 | Assistant-operated device walkthrough / live authenticated chat / VoiceOver | **NOT_RUN** |
 
-[Cloud build and results](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/xcode-cloud/products/6df352ca-bec7-4a8a-b369-a2bb039dc3d9/builds/9e86f6b4-b959-4e27-a03d-4a0d4e610127/summary) · [TestFlight group](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/apps/6831068473/testflight/groups/88f6a4c3-af5f-46dc-acb3-9f0a83b71a6e).
+[Cloud build and results](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/xcode-cloud/products/6df352ca-bec7-4a8a-b369-a2bb039dc3d9/builds/d5294461-810e-4b2d-8272-4a7fecac2913/summary) · [TestFlight group](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/apps/6831068473/testflight/groups/88f6a4c3-af5f-46dc-acb3-9f0a83b71a6e).
+
+Build 5 contains Review 4 fixes for live/stored thread discovery, local search,
+scoped command/list errors, message alignment/context actions, selected titles,
+and tool/model/compaction timeline ordering. It was manually built from the exact
+GitHub-validated commit above; the PR has not been merged. Beta testing notes were
+written and read back in App Store Connect. Distribution does not establish
+physical-device or live Hermes acceptance.
 
 ## Pipeline
 
