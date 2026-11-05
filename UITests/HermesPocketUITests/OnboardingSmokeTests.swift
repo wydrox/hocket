@@ -15,8 +15,8 @@ final class OnboardingSmokeTests: XCTestCase {
         let password = secureField("Password", in: app)
         let signIn = app.buttons["Sign In"]
 
-        XCTAssertTrue(username.waitForExistence(timeout: 10))
-        XCTAssertTrue(password.waitForExistence(timeout: 10))
+        reveal(username, in: app)
+        reveal(password, in: app)
         reveal(signIn, in: app)
         XCTAssertTrue(signIn.waitForExistence(timeout: 10))
         XCTAssertFalse(signIn.isEnabled)
@@ -25,6 +25,7 @@ final class OnboardingSmokeTests: XCTestCase {
         reveal(address, in: app, direction: .down)
         address.tap()
         address.typeText("http://hermes.example.com")
+        XCTAssertEqual(address.value as? String, "http://hermes.example.com")
         reveal(username, in: app)
         username.tap()
         username.typeText("smoke-test-user")
@@ -65,8 +66,11 @@ final class OnboardingSmokeTests: XCTestCase {
         XCTAssertTrue(useToken.waitForExistence(timeout: 10))
         useToken.tap()
         let token = secureField("Access Token", in: app)
-        reveal(token, in: app)
+        // Removing the username/password rows can move this new row above the
+        // current viewport. Start toward the top; reveal also follows its frame.
+        reveal(token, in: app, direction: .down)
         XCTAssertTrue(token.waitForExistence(timeout: 10))
+        XCTAssertTrue(token.isHittable, "The access-token option must expose an editable secure field.")
         let connect = app.buttons["Connect"]
         reveal(connect, in: app)
         XCTAssertTrue(connect.waitForExistence(timeout: 10))
@@ -76,13 +80,16 @@ final class OnboardingSmokeTests: XCTestCase {
 
     func testDarkOnboardingScreenshot() {
         let app = launchOnboarding(style: "Dark")
+        reveal(textField("Username", in: app), in: app)
         XCTAssertTrue(textField("Username", in: app).waitForExistence(timeout: 10))
         attachScreenshot(app, name: "Onboarding-Requested-Dark")
     }
 
     func testLargestDynamicTypeOnboardingScreenshot() {
         let app = launchOnboarding(style: "Light", largestDynamicType: true)
-        attachScreenshot(app, name: "Onboarding-Requested-Accessibility-XXXL-Top")
+        let address = textField("https://hermes.example.com", in: app)
+        XCTAssertTrue(address.isHittable, "The server address must remain reachable at the requested largest text size.")
+        attachScreenshot(app, name: "Onboarding-Requested-Accessibility-XXXL-Address")
         let username = textField("Username", in: app)
         reveal(username, in: app)
         XCTAssertTrue(username.waitForExistence(timeout: 10))
@@ -100,7 +107,7 @@ final class OnboardingSmokeTests: XCTestCase {
         // Per-process user-default overrides; no simulator or shared device
         // preferences are changed. Inspect attachments to confirm visual traits;
         // screenshots are observations, not assertions of a pixel baseline.
-        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-AppleInterfaceStyle", style]
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US", "-hocket-test-appearance", style]
         if largestDynamicType {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         }
@@ -112,10 +119,11 @@ final class OnboardingSmokeTests: XCTestCase {
         add(hierarchy)
         XCTAssertTrue(app.navigationBars["hocket"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["Your Hermes, within reach."].waitForExistence(timeout: 10))
-        XCTAssertTrue(textField("https://hermes.example.com", in: app).waitForExistence(timeout: 10),
-                      "Expected fresh-install onboarding; use an isolated simulator without saved Hermes credentials.")
         XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Cannot read the saved connection from Keychain")).firstMatch.exists,
                        "The simulator app must have working Keychain access; inspect signing and entitlements.")
+        // Form realizes rows lazily. At accessibility XXXL the introductory
+        // text fills the first viewport, so waiting cannot create the URL row.
+        reveal(textField("https://hermes.example.com", in: app), in: app)
         return app
     }
 
@@ -130,28 +138,83 @@ final class OnboardingSmokeTests: XCTestCase {
         app.secureTextFields.matching(NSPredicate(format: "placeholderValue == %@", placeholder)).firstMatch
     }
 
-    private enum ScrollDirection { case up, down }
+    private enum ScrollDirection: String { case up, down }
 
-    private func reveal(_ element: XCUIElement, in app: XCUIApplication, direction: ScrollDirection = .up) {
+    private func reveal(
+        _ element: XCUIElement,
+        in app: XCUIApplication,
+        direction: ScrollDirection = .up,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
         let form = app.collectionViews.firstMatch
-        XCTAssertTrue(form.waitForExistence(timeout: 10))
-        for _ in 0..<16 {
-            if element.exists && (element.isHittable || (!element.isEnabled && isVisibleInForm(element, in: app))) { return }
-            // Swipe inside the form, above the keyboard, when it is present.
-            let startY: CGFloat = direction == .up ? 0.45 : 0.20
-            let endY: CGFloat = direction == .up ? 0.20 : 0.45
-            form.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: startY))
-                .press(forDuration: 0.05, thenDragTo: form.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: endY)))
+        XCTAssertTrue(form.waitForExistence(timeout: 10), file: file, line: line)
+        var nextDirection = direction
+        var previousContent: String?
+        var reversedAtBoundary = false
+        var trace: [String] = []
+
+        // Eight substantial, viewport-relative drags cover the onboarding form.
+        // A stationary viewport reverses the search once, then fails with the
+        // actual hierarchy instead of repeating ineffective swipes indefinitely.
+        for attempt in 0...8 {
+            let viewport = formViewport(in: app)
+            let exists = element.exists
+            let frame = exists ? element.frame : .zero
+            if exists && viewport.contains(frame) && !frame.isEmpty
+                && (!element.isEnabled || element.isHittable) { return }
+
+            let content = form.staticTexts.allElementsBoundByIndex.compactMap { text -> String? in
+                let bounds = text.frame
+                guard viewport.intersects(bounds) else { return nil }
+                return "\(text.label)@\(Int(bounds.minY.rounded()))"
+            }.joined(separator: " | ")
+            trace.append("\(attempt): \(nextDirection.rawValue), target=\(frame), viewport=\(viewport), visible=\(content)")
+            guard attempt < 8, viewport.height > 80 else { break }
+
+            if content == previousContent {
+                guard !reversedAtBoundary else { break }
+                nextDirection = nextDirection == .up ? .down : .up
+                reversedAtBoundary = true
+            } else if exists && !frame.isEmpty {
+                if frame.minY < viewport.minY { nextDirection = .down }
+                else if frame.maxY > viewport.maxY { nextDirection = .up }
+            }
+            previousContent = content
+
+            // CollectionView can include system side areas. Use the center of
+            // visible form content and keep both endpoints above the keyboard.
+            let x = viewport.midX
+            let upperY = viewport.minY + viewport.height * 0.2
+            let lowerY = viewport.minY + viewport.height * 0.8
+            var distance = lowerY - upperY
+            if exists && !frame.isEmpty {
+                let needed = nextDirection == .up ? frame.maxY - viewport.maxY : viewport.minY - frame.minY
+                if needed > 0 { distance = min(distance, max(40, needed + 24)) }
+            }
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let start = origin.withOffset(CGVector(dx: x, dy: nextDirection == .up ? lowerY : upperY))
+            let end = origin.withOffset(CGVector(dx: x, dy: nextDirection == .up ? lowerY - distance : upperY + distance))
+            start.press(forDuration: 0.05, thenDragTo: end)
         }
-        XCTFail("Could not scroll the onboarding form to \(element).")
+        attachScreenshot(app, name: "Unreachable-Onboarding-Control")
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = "Unreachable-Onboarding-Control-Hierarchy"
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
+        XCTFail("Could not reveal \(element). Scroll trace:\n\(trace.joined(separator: "\n"))", file: file, line: line)
     }
 
     private func isVisibleInForm(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
         guard element.exists, !element.frame.isEmpty else { return false }
-        let top = app.navigationBars.firstMatch.frame.maxY
-        let bottom = app.keyboards.firstMatch.exists ? app.keyboards.firstMatch.frame.minY : app.frame.maxY
-        let viewport = CGRect(x: app.frame.minX, y: top, width: app.frame.width, height: max(0, bottom - top))
-        return viewport.contains(element.frame)
+        return formViewport(in: app).contains(element.frame)
+    }
+
+    private func formViewport(in app: XCUIApplication) -> CGRect {
+        let form = app.collectionViews.firstMatch.frame.intersection(app.frame)
+        let top = max(form.minY, app.navigationBars.firstMatch.frame.maxY)
+        let bottom = app.keyboards.firstMatch.exists ? min(form.maxY, app.keyboards.firstMatch.frame.minY) : form.maxY
+        return CGRect(x: form.minX, y: top + 8, width: form.width, height: max(0, bottom - top - 16))
     }
 
     private func attachScreenshot(_ app: XCUIApplication, name: String) {

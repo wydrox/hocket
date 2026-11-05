@@ -27,5 +27,21 @@ struct HermesRootView: View {
         .sheet(isPresented: $showsSettings) {
             NavigationStack { SettingsView(store: store) }
         }
+        .preferredColorScheme(testAppearance)
+    }
+
+    private var testAppearance: ColorScheme? {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let index = arguments.firstIndex(of: "-hocket-test-appearance"),
+              arguments.indices.contains(index + 1) else { return nil }
+        switch arguments[index + 1].lowercased() {
+        case "dark": return .dark
+        case "light": return .light
+        default: return nil
+        }
+        #else
+        return nil
+        #endif
     }
 }
