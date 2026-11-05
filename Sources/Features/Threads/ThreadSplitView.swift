@@ -8,11 +8,25 @@ struct ThreadSplitView: View {
     @State private var selection: String?
     @State private var search = ""
     @State private var isCreating = false
+    @State private var showsProfiles = false
 
     var body: some View {
         NavigationSplitView(columnVisibility: $columnVisibility) {
             List(selection: $selection) {
                 Section {
+                    Button { showsProfiles = true } label: {
+                        LabeledContent {
+                            Text(store.currentProfileTitle)
+                                .multilineTextAlignment(.trailing)
+                        } label: {
+                            Label("Profile", systemImage: "person.crop.circle")
+                        }
+                        .frame(minHeight: 44)
+                    }
+                    .accessibilityLabel("Profile")
+                    .accessibilityValue(store.currentProfileTitle)
+                    .accessibilityHint("Choose a Hermes profile.")
+                    .accessibilityIdentifier("threads.profile")
                     ConnectionStatusView(connection: store.connection)
                     if store.isLoadingThreads { ProgressView("Loading Threads…") }
                     if store.connection != .connected {
@@ -35,30 +49,33 @@ struct ThreadSplitView: View {
                     }
                 }
                 Section {
+                    if store.threads.isEmpty, store.hasLoadedThreads, store.connection == .connected, !store.isLoadingThreads, store.threadListError == nil {
+                        ContentUnavailableView {
+                            Label(search.isEmpty ? "No Threads Yet" : "No Matching Threads", systemImage: "bubble.left.and.bubble.right")
+                        } description: {
+                            Text(search.isEmpty ? "Start a conversation with Hermes." : store.hasOlderThreads ? "Try another word or load older conversations." : "Try another word.")
+                        } actions: {
+                            if search.isEmpty { Button("New Thread", action: createThread).buttonStyle(.borderedProminent) }
+                        }
+                        .listRowBackground(Color.clear)
+                    }
                     ForEach(store.threads) { thread in
                         NavigationLink(value: thread.id) { ThreadRow(thread: thread) }
                             .disabled(store.isLoadingMessages)
                     }
                 }
-            }
-            .overlay {
-                if store.threads.isEmpty, store.hasLoadedThreads, store.threadSearchQuery == search, store.connection == .connected, !store.isLoadingThreads, store.threadListError == nil {
-                    ContentUnavailableView {
-                        Label(search.isEmpty ? "No Threads Yet" : "No Matching Threads", systemImage: "bubble.left.and.bubble.right")
-                    } description: {
-                        Text(search.isEmpty ? "Start a conversation with Hermes." : "Try another word.")
-                    } actions: {
-                        if search.isEmpty { Button("New Thread", action: createThread).buttonStyle(.borderedProminent) }
+                if store.hasOlderThreads || store.isLoadingOlderThreads || (store.threadHistoryError != nil && store.threadListError == nil) {
+                    Section {
+                        ThreadHistoryFooter(store: store)
+                    } footer: {
+                        if store.hasOlderThreads {
+                            Text("Searches loaded conversations. Load older conversations to search more history.")
+                        }
                     }
-                    .allowsHitTesting(search.isEmpty)
                 }
             }
             .searchable(text: $search, prompt: "Search Threads")
-            .task(id: search) {
-                do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
-                guard store.connection == .connected else { return }
-                await store.refreshThreads(query: search)
-            }
+            .onChange(of: search) { store.setThreadSearchQuery(search) }
             .refreshable { await store.refreshThreads(query: search) }
             .navigationTitle("Threads")
             .navigationSplitViewColumnWidth(min: 260, ideal: 300, max: 360)
@@ -94,7 +111,9 @@ struct ThreadSplitView: View {
             Task { await store.openThread(id) }
         }
         .onChange(of: store.selectedThreadID) { _, id in selection = id }
-        .onAppear { selection = store.selectedThreadID }
+        .onChange(of: store.threadSearchQuery) { _, query in search = query }
+        .onAppear { selection = store.selectedThreadID; search = store.threadSearchQuery }
+        .sheet(isPresented: $showsProfiles) { ProfilePickerView(store: store) }
     }
 
     private func createThread() {

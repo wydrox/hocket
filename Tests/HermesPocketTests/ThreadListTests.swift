@@ -7,15 +7,23 @@ struct ThreadListTests {
         try JSONDecoder().decode(JSONValue.self, from: Data(text.utf8))
     }
 
+    private func emptyHistory(_ offset: Int) async throws -> JSONValue {
+        .object(["sessions": .array([]), "total": .integer(0), "limit": .integer(50), "offset": .integer(Int64(offset)), "storage": .object([:])])
+    }
+
+    private func emptyFeed(_ scope: String) -> JSONValue {
+        .object(["scope": .string(scope), "sessions": .array([])])
+    }
+
     @Test @MainActor func openCanonicalAndStoredHistoryAreMergedBeforeSubstringSearch() async throws {
         let store = HermesStore()
         let stored = try response(#"{"scope":"stored","sessions":[{"id":"history","session_id":"tip","title":"Résumé history","source":"cli","started_at":100.5,"message_count":8,"running":false},{"id":"same","session_id":"same","title":"Stale title","started_at":100,"message_count":1,"running":false}]}"#)
         let live = try response(#"{"scope":"live","sessions":[{"id":"same","session_id":"same","title":"Current résumé","source":"gui","started_at":200,"message_count":3,"running":true},{"id":"new","session_id":"new","title":"New thread","started_at":300,"message_count":0,"running":false}]}"#)
         var requestedScopes: [String] = []
-        try await store.loadThreads(query: "SUME") { scope in
+        try await store.loadThreads(query: "SUME", fetchSessions: { scope in
             requestedScopes.append(scope)
             return scope == "stored" ? stored : live
-        }
+        }, fetchHistory: emptyHistory)
         #expect(requestedScopes == ["stored", "live"])
         #expect(store.threads.map(\.id) == ["same", "tip"])
         #expect(store.threads.first?.title == "Current résumé")
@@ -34,10 +42,9 @@ struct ThreadListTests {
     @Test @MainActor func malformedOrFailedFeedPreservesPreviousListAndDoesNotClaimEmptySuccess() async throws {
         let store = HermesStore()
         store.threads = [HermesThread(id: "existing", title: "Existing thread")]
-        let stored = try response(#"{"scope":"stored","sessions":[]}"#)
         for invalid in [JSONValue.object([:]), try response(#"{"scope":"live","sessions":null}"#), try response(#"{"scope":"live","sessions":[{"title":"Missing identity"}]}"#)] {
             do {
-                try await store.loadThreads(query: "") { $0 == "stored" ? stored : invalid }
+                try await store.loadThreads(query: "", fetchSessions: { $0 == "stored" ? emptyFeed("stored") : invalid }, fetchHistory: emptyHistory)
                 Issue.record("An invalid live response must fail the load")
             } catch {
                 #expect(store.threads.map(\.id) == ["existing"])
@@ -48,7 +55,7 @@ struct ThreadListTests {
             }
         }
         do {
-            try await store.loadThreads(query: "") { _ in throw GatewayError.timeout }
+            try await store.loadThreads(query: "", fetchSessions: { _ in throw GatewayError.timeout }, fetchHistory: emptyHistory)
             Issue.record("An unavailable feed must fail the load")
         } catch {
             #expect(store.threads.map(\.id) == ["existing"])
@@ -59,11 +66,10 @@ struct ThreadListTests {
     @Test @MainActor func staleFailureCannotReplaceNewerSuccessOrItsLoadingState() async throws {
         let store = HermesStore()
         let fresh = try response(#"{"scope":"live","sessions":[{"id":"fresh","session_id":"fresh","title":"Fresh"}]}"#)
-        let empty = try response(#"{"scope":"stored","sessions":[]}"#)
-        try await store.loadThreads(query: "old") { _ in
-            try await store.loadThreads(query: "Fresh") { $0 == "stored" ? empty : fresh }
+        try await store.loadThreads(query: "old", fetchSessions: { _ in
+            try await store.loadThreads(query: "Fresh", fetchSessions: { $0 == "stored" ? emptyFeed("stored") : fresh }, fetchHistory: emptyHistory)
             throw GatewayError.timeout
-        }
+        }, fetchHistory: emptyHistory)
         #expect(store.threads.map(\.id) == ["fresh"])
         #expect(store.threadSearchQuery == "Fresh")
         #expect(store.threadListError == nil)
@@ -72,14 +78,13 @@ struct ThreadListTests {
 
     @Test @MainActor func staleSuccessCannotReplaceNewerSearchResults() async throws {
         let store = HermesStore()
-        let empty = try response(#"{"scope":"stored","sessions":[]}"#)
         let fresh = try response(#"{"scope":"live","sessions":[{"id":"fresh","session_id":"fresh","title":"Fresh"}]}"#)
         var obsoleteScopes: [String] = []
-        try await store.loadThreads(query: "obsolete") { scope in
+        try await store.loadThreads(query: "obsolete", fetchSessions: { scope in
             obsoleteScopes.append(scope)
-            try await store.loadThreads(query: "Fresh") { $0 == "stored" ? empty : fresh }
-            return empty
-        }
+            try await store.loadThreads(query: "Fresh", fetchSessions: { $0 == "stored" ? emptyFeed("stored") : fresh }, fetchHistory: emptyHistory)
+            return emptyFeed("stored")
+        }, fetchHistory: emptyHistory)
         #expect(obsoleteScopes == ["stored"])
         #expect(store.threads.map(\.id) == ["fresh"])
         #expect(store.threadSearchQuery == "Fresh")
@@ -89,9 +94,7 @@ struct ThreadListTests {
     @Test @MainActor func genuineEmptyListsClearPreviousRowsAndCompleteTheLoad() async throws {
         let store = HermesStore()
         store.threads = [HermesThread(id: "removed", title: "Removed")]
-        try await store.loadThreads(query: "") { scope in
-            .object(["scope": .string(scope), "sessions": .array([])])
-        }
+        try await store.loadThreads(query: "", fetchSessions: { emptyFeed($0) }, fetchHistory: emptyHistory)
         #expect(store.threads.isEmpty)
         #expect(store.hasLoadedThreads)
         #expect(!store.isLoadingThreads)
@@ -103,7 +106,7 @@ struct ThreadListTests {
         store.hasLoadedThreads = true
         store.threadSearchQuery = "old"
         do {
-            try await store.loadThreads(query: "new") { _ in throw CancellationError() }
+            try await store.loadThreads(query: "new", fetchSessions: { _ in throw CancellationError() }, fetchHistory: emptyHistory)
             Issue.record("Expected cancellation")
         } catch is CancellationError { }
         #expect(!store.hasLoadedThreads)
@@ -118,7 +121,7 @@ struct ThreadListTests {
         let snapshot = try response(#"{"session_id":"created","messages":[],"message_count":0,"running":false,"info":{"desktop_protocol":"hermes-gateway-v1","title":"Server title","started_at":123}}"#)
         try store.installSnapshot(snapshot)
         do {
-            try await store.loadThreads(query: "") { _ in throw GatewayError.timeout }
+            try await store.loadThreads(query: "", fetchSessions: { _ in throw GatewayError.timeout }, fetchHistory: emptyHistory)
         } catch { }
         #expect(store.selectedThreadID == "created")
         #expect(store.threads.first?.id == "created")

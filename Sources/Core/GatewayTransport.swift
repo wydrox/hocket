@@ -14,6 +14,24 @@ final class GatewayTransport {
     private var deadlines: [String: Task<Void, Never>] = [:]
     private var authorityReady: Bool?
     private var generation = UUID()
+    private(set) var profileName: String?
+
+    func selectProfile(_ name: String?) { profileName = HermesProfile.normalizedName(name) }
+
+    /// Explicit allowlist: connection-level negotiation must never acquire profile params.
+    nonisolated static func parameters(for method: String, params: [String: JSONValue], profileName: String?) -> [String: JSONValue] {
+        let scoped: Set<String> = [
+            "session.list", "session.create", "session.resume", "session.detach", "session.info", "session.history",
+            "session.events.since", "session.mutate", "session.interrupt", "session.stats",
+            "prompt.submit", "prompt.receipt", "prompt.cancel", "prompt.resolve_unknown", "prompt.steer_queued", "prompt.replace_queued",
+            "commands.catalog", "command.dispatch", "complete.slash", "slash.exec",
+            "config.get", "config.set", "model.options", "image.attach_bytes", "file.attach", "approval.respond", "clarify.respond"
+        ]
+        guard scoped.contains(method), let name = HermesProfile.normalizedName(profileName) else { return params }
+        var routed = params
+        routed["profile"] = .string(name)
+        return routed
+    }
 
     init() {
         let configuration = URLSessionConfiguration.ephemeral
@@ -78,6 +96,7 @@ final class GatewayTransport {
 
     func disconnect() {
         generation = UUID()
+        profileName = nil
         receiveTask?.cancel()
         heartbeatTask?.cancel()
         receiveTask = nil
@@ -95,7 +114,8 @@ final class GatewayTransport {
     func call(_ method: String, params: [String: JSONValue] = [:], timeout: Duration = .seconds(30)) async throws -> JSONValue {
         guard let socket else { throw GatewayError.disconnected }
         let id = UUID().uuidString
-        let frame = GatewayEnvelope(id: .string(id), method: method, params: .object(params))
+        let frame = GatewayEnvelope(id: .string(id), method: method,
+            params: .object(Self.parameters(for: method, params: params, profileName: profileName)))
         let bytes = try JSONEncoder().encode(frame)
         guard let text = String(data: bytes, encoding: .utf8) else { throw GatewayError.invalidFrame }
         return try await withTaskCancellationHandler {

@@ -7,4 +7,6 @@ struct GatewayCredentials: Codable, Sendable, Equatable {
     var provider: String?
     var expiresAt: Date?
     var accountID: String?
+    /// This client's routing preference, never the server's global default.
+    var profileName: String?
 }

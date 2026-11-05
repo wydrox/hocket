@@ -22,6 +22,10 @@ supported in this beta; Web access alone does not enable hocket password login.
 ## Native features
 
 - Search, create, open, rename, and archive conversation threads.
+- Choose a Hermes profile from Threads or Settings; keep its saved connection
+  preference and drafts separate from other profiles.
+- Load older conversations in pages of 50, retaining loaded history on failures.
+  Search covers the loaded conversations; load older pages to search more history.
 - Stream replies, inspect tool activity, render Markdown and code, and stop a turn.
 - Attach system-selected photos and documents; preview and share incoming images and files.
 - Restore unsent drafts after app restarts, scoped to account and profile.
@@ -49,6 +53,7 @@ Background push notifications and a phone-side agent runtime are not implemented
 
 See [cloud setup and acceptance](docs/cloud-build.md),
 [gateway contract](docs/hermes-api-contract.md),
+[profiles and paginated history](docs/profiles-history.md),
 [connection deployment](docs/mobile-connection-plan.md), and
 [product spec and verification](docs/product/hermes-ios/README.md).
 

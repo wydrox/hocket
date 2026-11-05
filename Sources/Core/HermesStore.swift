@@ -19,6 +19,14 @@ final class HermesStore {
     var isRestoringConnection = true
     var hasCredentials = false
     var isLoadingThreads = false
+    var isLoadingOlderThreads = false
+    var hasOlderThreads = false
+    var threadHistoryError: String?
+    var profiles: [HermesProfile] = []
+    var selectedProfileName: String?
+    var profileError: String?
+    var isLoadingProfiles = false
+    var isSwitchingProfile = false
     var isLoadingMessages = false
     var isSending = false
     var isUploadingAttachment = false
@@ -70,6 +78,8 @@ final class HermesStore {
     @ObservationIgnored var bufferedEvents: [JSONValue] = []
     @ObservationIgnored var reconnectTask: Task<Void, Never>?
     @ObservationIgnored var refreshTask: Task<Void, Never>?
+    @ObservationIgnored var threadHistory = ThreadHistoryState()
+    @ObservationIgnored var profileRequestID = UUID()
     @ObservationIgnored var connectionAttempt = UUID()
     @ObservationIgnored var navigationAttempt = UUID()
     @ObservationIgnored var createRequestID: String?
@@ -84,6 +94,7 @@ final class HermesStore {
         transport.onServerRequest = { [weak self] request in self?.receiveServerRequest(request) }
         transport.onDisconnect = { [weak self] message in
             guard let self else { return }
+            guard self.connection == .connected || self.connection == .reconnecting else { return }
             self.lastError = message
             self.connection = .reconnecting
             self.scheduleReconnect()
@@ -91,39 +102,16 @@ final class HermesStore {
     }
 
     func restoreConnection() async {
-        defer { isRestoringConnection = false }
+        let attempt = connectionAttempt
+        defer { if connectionAttempt == attempt { isRestoringConnection = false } }
         do {
             submissions = try journal.read()
             guard let saved = try keychain.read() else { return }
             hasCredentials = true
             endpoint = saved.endpoint
             credentials = saved
+            selectedProfileName = saved.profileName
             connection = .connecting
-            try await establish(saved, attempt: connectionAttempt)
-        } catch {
-            transport.disconnect()
-            connection = .disconnected
-            report(error)
-        }
-    }
-
-    func connect(endpoint: String, username: String, password: String) async {
-        lastError = nil
-        reconnectTask?.cancel()
-        reconnectTask = nil
-        connectionAttempt = UUID()
-        let attempt = connectionAttempt
-        connection = .connecting
-        do {
-            let address = try GatewayEndpoint(endpoint)
-            let saved = try await NativeAuthentication().signIn(endpoint: address, username: username, password: password)
-            guard connectionAttempt == attempt else { return }
-            saveDraft()
-            clearSessionState()
-            credentials = saved
-            self.endpoint = saved.endpoint
-            try keychain.save(credentials ?? saved)
-            hasCredentials = true
             try await establish(saved, attempt: attempt)
         } catch {
             guard connectionAttempt == attempt else { return }
@@ -133,38 +121,80 @@ final class HermesStore {
         }
     }
 
-    func connect(endpoint: String, token: String) async {
-        lastError = nil
-        reconnectTask?.cancel()
-        reconnectTask = nil
-        let attempt = UUID()
-        connectionAttempt = attempt
-        connection = .connecting
+    func connect(endpoint: String, username: String, password: String, profileName: String? = nil) async {
+        let attempt = beginConnectionTransition()
+        profiles = []
+        selectedProfileName = nil
+        do {
+            let address = try GatewayEndpoint(endpoint)
+            var saved = try await NativeAuthentication().signIn(endpoint: address, username: username, password: password)
+            try checkConnectionAttempt(attempt)
+            saved.profileName = HermesProfile.normalizedName(profileName)
+            try await establish(saved, attempt: attempt)
+        } catch {
+            guard connectionAttempt == attempt else { return }
+            transport.disconnect()
+            connection = .disconnected
+            report(error)
+        }
+    }
+
+    func connect(endpoint: String, token: String, profileName: String? = nil) async {
+        let attempt = beginConnectionTransition()
+        profiles = []
+        selectedProfileName = nil
         do {
             let address = try GatewayEndpoint(endpoint)
             let cleanToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !cleanToken.isEmpty else { throw GatewayError.emptyToken }
-            saveDraft()
-            clearSessionState()
-            let saved = GatewayCredentials(endpoint: address.origin.absoluteString, token: cleanToken)
-            credentials = saved
-            self.endpoint = saved.endpoint
+            let saved = GatewayCredentials(endpoint: address.origin.absoluteString, token: cleanToken,
+                                           profileName: HermesProfile.normalizedName(profileName))
             try await establish(saved, attempt: attempt)
-            try keychain.save(credentials ?? saved)
-            hasCredentials = true
         } catch {
             guard connectionAttempt == attempt else { return }
             transport.disconnect()
             connection = .disconnected
             report(error)
         }
+    }
+
+    /// Fence every operation belonging to the old account/profile before opening a new socket.
+    @discardableResult func beginConnectionTransition() -> UUID {
+        saveDraft()
+        connectionAttempt = UUID()
+        reconnectTask?.cancel()
+        refreshTask?.cancel()
+        reconnectTask = nil
+        refreshTask = nil
+        transport.disconnect()
+        clearSessionState()
+        profileRequestID = UUID()
+        isLoadingProfiles = false
+        isSwitchingProfile = false
+        isRestoringConnection = false
+        lastError = nil
+        profileError = nil
+        connection = .connecting
+        return connectionAttempt
+    }
+
+    func checkConnectionAttempt(_ attempt: UUID) throws {
+        guard connectionAttempt == attempt, !Task.isCancelled else { throw CancellationError() }
     }
 
     func disconnect(forgetCredentials: Bool = false) async {
         connectionAttempt = UUID()
         navigationAttempt = UUID()
         listRequestID = UUID()
+        profileRequestID = UUID()
+        resetThreadHistory()
         isLoadingThreads = false
+        isLoadingProfiles = false
+        isSwitchingProfile = false
+        isLoadingMessages = false
+        isSending = false
+        isUploadingAttachment = false
+        bufferedEvents = []
         reconnectTask?.cancel()
         refreshTask?.cancel()
         reconnectTask = nil
@@ -180,57 +210,118 @@ final class HermesStore {
                 credentials = nil
                 hasCredentials = false
                 endpoint = ""
+                profiles = []
+                selectedProfileName = nil
+                profileError = nil
                 clearSessionState()
             } catch { report(error) }
         }
     }
 
     func establish(_ saved: GatewayCredentials, attempt: UUID) async throws {
-        var active = credentials ?? saved
+        try checkConnectionAttempt(attempt)
+        var active = saved
+        let selectedName = HermesProfile.normalizedName(active.profileName)
         if let expires = active.expiresAt, expires.timeIntervalSinceNow < 60, active.refreshToken != nil {
-            active = try await NativeAuthentication().refresh(active)
-            try keychain.save(active)
-            credentials = active
+            active = try await refreshedCredentials(active)
+            try checkConnectionAttempt(attempt)
+            try preserveRefreshedAuthentication(active)
         }
         do {
             active.accountID = try await NativeAuthentication().accountIdentity(active)
+            try checkConnectionAttempt(attempt)
             try await transport.connect(endpoint: GatewayEndpoint(active.endpoint), token: active.token)
-        }
-        catch GatewayError.authentication(401) where active.refreshToken != nil {
-            active = try await NativeAuthentication().refresh(active)
-            try keychain.save(active)
-            credentials = active
+        } catch GatewayError.authentication(401) where active.refreshToken != nil {
+            try checkConnectionAttempt(attempt)
+            active = try await refreshedCredentials(active)
+            try checkConnectionAttempt(attempt)
+            try preserveRefreshedAuthentication(active)
             active.accountID = try await NativeAuthentication().accountIdentity(active)
+            try checkConnectionAttempt(attempt)
             try await transport.connect(endpoint: GatewayEndpoint(active.endpoint), token: active.token)
         }
-        guard connectionAttempt == attempt else { throw CancellationError() }
-        if !accountID.isEmpty, accountID != active.accountID { clearSessionState() }
-        credentials = active
-        try keychain.save(active)
-        runtime = try await transport.call("runtime.describe")
-        guard let newProfile = runtime["profile_id"].string else {
+        try checkConnectionAttempt(attempt)
+        // runtime.describe has an empty param contract and describes the socket's launch authority.
+        let described = try await transport.call("runtime.describe")
+        try checkConnectionAttempt(attempt)
+        guard let launchProfile = described["profile_id"].string, !launchProfile.isEmpty else {
             throw GatewayError.invalidResponse("Hermes did not identify its active profile.")
         }
-        if !profileID.isEmpty, profileID != newProfile { clearSessionState() }
+        var roster: [HermesProfile] = []
+        var rosterError: String?
+        do {
+            roster = try HermesProfile.decodeRoster(try await transport.call("profiles.list", params: ["include_sessions": .bool(false)]))
+        } catch {
+            try checkConnectionAttempt(attempt)
+            if error is CancellationError { throw error }
+            rosterError = error.localizedDescription
+        }
+        try checkConnectionAttempt(attempt)
+        transport.selectProfile(selectedName)
+        let verifiedProfile: String
+        if let selectedName {
+            let scope = try await transport.call("config.get", params: ["key": .string("profile")])
+            try checkConnectionAttempt(attempt)
+            verifiedProfile = try HermesProfile.verifiedHome(scope, expectedPath: roster.first(where: { $0.name == selectedName })?.path)
+        } else {
+            verifiedProfile = launchProfile
+        }
+        try checkConnectionAttempt(attempt)
+        if accountID != (active.accountID ?? "") || profileID != verifiedProfile || credentials?.endpoint != active.endpoint {
+            clearSessionState()
+        }
+        active.profileName = selectedName
+        // A failed profile verification must never persist a fallback or an unverified preference.
+        try keychain.save(active)
+        credentials = active
+        endpoint = active.endpoint
+        hasCredentials = true
         accountID = active.accountID ?? ""
-        profileID = newProfile
+        profileID = verifiedProfile
+        selectedProfileName = selectedName
+        profiles = roster
+        profileError = rosterError
+        runtime = described
         try loadVerifiedDrafts()
         connection = .connected
-        if let id = selectedThreadID { try await resume(id) }
+        if let id = selectedThreadID {
+            try await resume(id)
+            try checkConnectionAttempt(attempt)
+        }
         await refreshThreads(query: threadSearchQuery)
+        try checkConnectionAttempt(attempt)
         await loadCatalogs()
+        try checkConnectionAttempt(attempt)
+    }
+
+    private func refreshedCredentials(_ saved: GatewayCredentials) async throws -> GatewayCredentials {
+        var refreshed = try await NativeAuthentication().refresh(saved)
+        refreshed.profileName = saved.profileName
+        refreshed.accountID = saved.accountID
+        return refreshed
+    }
+
+    /// Keep rotated tokens even if a later profile read fails, retaining the last verified preference.
+    private func preserveRefreshedAuthentication(_ refreshed: GatewayCredentials) throws {
+        guard let previous = credentials, previous.endpoint == refreshed.endpoint,
+              previous.accountID == refreshed.accountID else { return }
+        var authentication = refreshed
+        authentication.profileName = previous.profileName
+        try keychain.save(authentication)
+        credentials = authentication
     }
 
     func scheduleReconnect() {
         guard reconnectTask == nil, let saved = credentials else { return }
         let attempt = connectionAttempt
         reconnectTask = Task { [weak self] in
-            defer { self?.reconnectTask = nil }
+            defer { if self?.connectionAttempt == attempt { self?.reconnectTask = nil } }
             for delay in [1, 2, 4, 8, 16, 30] {
                 do {
                     try await Task.sleep(for: .seconds(delay))
                     guard let self, self.connectionAttempt == attempt else { return }
-                    try await self.establish(saved, attempt: attempt)
+                    try await self.establish(self.credentials ?? saved, attempt: attempt)
+                    guard self.connectionAttempt == attempt else { return }
                     self.lastError = nil
                     return
                 } catch is CancellationError { return }
@@ -256,6 +347,17 @@ final class HermesStore {
 
     func clearSessionState() {
         flushDrafts()
+        navigationAttempt = UUID()
+        profileRequestID = UUID()
+        resetThreadHistory()
+        isLoadingMessages = false
+        isLoadingProfiles = false
+        isSending = false
+        isUploadingAttachment = false
+        isStreaming = false
+        bufferedEvents = []
+        createRequestID = nil
+        runtime = .null
         draftScope = nil
         activeDraftSessionID = nil
         isRestoringDraft = true
@@ -280,6 +382,9 @@ final class HermesStore {
         attachments = []
         models = []
         commands = []
+        selectedModel = ""
+        selectedEffort = ""
+        selectedServiceTier = "normal"
         profileID = ""
         accountID = ""
         streamSegments = [:]
