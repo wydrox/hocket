@@ -1,0 +1,20 @@
+.DS_Store
+DerivedData/
+build/
+*.xcarchive
+*.ipa
+*.dSYM
+*.dSYM.zip
+*.xcresult
+xcuserdata/
+*.xcuserstate
+.env
+.env.*
+!.env.example
+*.p12
+*.mobileprovision
+*.cer
+AuthKey_*.p8
+
+# Local account/network evidence and operational helpers, never app source.
+evidence/
