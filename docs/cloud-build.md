@@ -23,9 +23,9 @@ is the XcodeGen source; regenerate and commit the project after changing it.
 
 [Workflow in App Store Connect](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/xcode-cloud/products/6df352ca-bec7-4a8a-b369-a2bb039dc3d9/workflows/662108ED-715A-440E-B46A-8501DC219743).
 The first full run, build 2, tested, signed and distributed version 1.0.0 (2).
-The latest verified beta, **1.0.1 (6)**, was manually built from
-`acba677eb01384fe1928c69087da8a0f231b1a07` on `fix/review4-thread-list-chat`.
-All 86 tests, Archive, and the internal TestFlight post-action passed; Apple
+The latest verified beta, **1.1.0 (7)**, was automatically built from merged
+`main` at `a582b64a647766e54fd24c97baf71832ef61a0b7`.
+All 98 tests, Archive, and the internal TestFlight post-action passed; Apple
 processing is VALID and the build is IN_BETA_TESTING in `hocket Internal`.
 See the exact revision, distribution readback and acceptance limits in
 [release status](release-status.md).

@@ -69,9 +69,11 @@ Xcode Cloud TestFlight action distributed it to **hocket Internal**. The update
 adds guided connection setup and public server discovery; see the
 [onboarding evidence](docs/product/connection-onboarding/verify-report.md).
 
-The latest verified internal beta is **1.0.1 (6)**, from
-`acba677eb01384fe1928c69087da8a0f231b1a07`. All **86 cloud tests passed**,
-and the build is available in **hocket Internal**. It adds Hermes profile
-selection, paginated conversation history, compact thread rows and a pinned
-connection footer to the earlier Review 4 fixes; see
+The latest verified internal beta is **1.1.0 (7)**, from merged `main`
+`a582b64a647766e54fd24c97baf71832ef61a0b7`. All **98 cloud tests passed**,
+and the build is available in **hocket Internal**. It includes the new icon,
+profile selection, paginated conversation history, read-only message history for
+legacy threads, compact rows and the pinned connection footer; see
 [release status](docs/release-status.md).
+
+The source repository is public. No license file has been added.

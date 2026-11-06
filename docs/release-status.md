@@ -1,37 +1,46 @@
 # Release status
 
-Verified 2026-11-05. These are observed release states, not planned outcomes.
+Verified 2026-11-06. These are observed release states, not planned outcomes.
 
 | Item | Observed state |
 | --- | --- |
-| Repository | Private [wydrox/hocket](https://github.com/wydrox/hocket), default branch `main` |
+| Repository | Public [wydrox/hocket](https://github.com/wydrox/hocket), default branch `main`; anonymous GitHub API read returned HTTP 200 |
 | App | `hocket: Hermes Agent`, Apple ID `6831068473`; device display name `hocket` |
 | Bundle / team | `com.wydrox.hocket` / `7S3F9767BM` |
-| Version | **1.0.1 (6)**, iOS/iPadOS 27+ |
-| Released source | `acba677eb01384fe1928c69087da8a0f231b1a07`, branch `fix/review4-thread-list-chat` |
-| Xcode Cloud | Build 6 `099a6da9-f822-4745-acc0-d708efba5203`, **SUCCEEDED** at 16:09:05 UTC |
-| Cloud tests | **86 passed**: 81 unit tests and 5 onboarding UI tests, iPhone 18 Pro / iOS 27.2 |
+| Version | **1.1.0 (7)**, iOS/iPadOS 27+ |
+| Released source | `a582b64a647766e54fd24c97baf71832ef61a0b7`, merged `main` |
+| Xcode Cloud | Automatic build 7 `74b865ed-876f-44b8-be7d-3736df3a9eb8`, **SUCCEEDED** at 22:14:03 UTC |
+| Cloud tests | **98 passed**: 93 unit tests and 5 onboarding UI tests, iPhone 18 Pro / iOS 27.2 |
 | Archive and signing | **SUCCEEDED** in Xcode Cloud |
-| Apple processing | **VALID**, internal-only build `1691ed9d-9d8e-4a0c-b2af-c8501f770f78` |
-| TestFlight distribution | Cloud post-action **SUCCEEDED**; build 6 read back in `hocket Internal`, state **IN_BETA_TESTING**, at 16:10:42 UTC |
-| Tester | Existing internal group preserved; installation of build 6 has not been verified |
-| Device installation | **NOT_RUN for build 6**. Historical readback reported 1.0.0 (2) installed on iPad Pro 11-inch (M4), iOS 27.0 |
+| Apple processing | **VALID**, internal-only build `22daca54-3ebf-4880-bc3f-6c50538dc970` |
+| TestFlight distribution | Cloud post-action **SUCCEEDED**; build 7 read back in `hocket Internal`, state **IN_BETA_TESTING**, at 22:14:30 UTC |
+| Tester | Existing internal group preserved; installation of build 7 has not been verified |
+| Device installation | **NOT_RUN for build 7** |
 | Local checkout | `/Users/rafalw/Dev/hocket`, connected to `wydrox/hocket` |
 | Local builds/tests | **NOT_RUN**; all compilation and test execution took place in the cloud |
 | Assistant-operated device walkthrough / live authenticated chat / VoiceOver | **NOT_RUN** |
 
-[Cloud build and results](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/xcode-cloud/products/6df352ca-bec7-4a8a-b369-a2bb039dc3d9/builds/099a6da9-f822-4745-acc0-d708efba5203/summary) · [TestFlight group](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/apps/6831068473/testflight/groups/88f6a4c3-af5f-46dc-acb3-9f0a83b71a6e).
+[Cloud build and results](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/xcode-cloud/products/6df352ca-bec7-4a8a-b369-a2bb039dc3d9/builds/74b865ed-876f-44b8-be7d-3736df3a9eb8/summary) · [TestFlight group](https://appstoreconnect.apple.com/teams/21e40dd1-5b96-4c70-a35e-f5b49ba22361/apps/6831068473/testflight/groups/88f6a4c3-af5f-46dc-acb3-9f0a83b71a6e).
 
-Build 6 adds Hermes profile selection, authenticated history pages of
-50, deduplication of physical/canonical conversation aliases, compact thread rows,
-and a pinned connection footer with the actual loaded count and last successful
-refresh. It retains the earlier Review 4 message and activity fixes from build 5.
-It was manually built from the exact GitHub-validated source above; the PR has not
-been merged. GitHub Actions and Xcode Cloud each passed 81 unit and 5 UI tests.
-The largest Dynamic Type guide test follows the system toolbar overflow before
-closing. Beta testing notes were written and read back in App Store Connect.
-Distribution does not establish physical-device or live Hermes acceptance. The
-requested simulator screenshot review remains explicitly deferred by the user.
+Build 7 is the first public-main 1.1.0 beta. It includes the new icon, Hermes
+profile selection and isolated drafts, paginated conversation history, compact
+thread rows and the pinned connection footer. Stored legacy conversations that
+Hermes cannot resume remotely now display authenticated, profile-scoped read-only
+message history with earlier-page loading. Failed opens expose Retry instead of
+the generic empty placeholder. Canonical conversations retain their controls.
+
+PR #1 was merged before the automatic cloud run. The 9e37363 Swift/test sources
+passed 93 unit and 5 UI tests in GitHub CI on attempt 2; the initial run had a UI
+snapshot-query timeout. The merged main revision adds the version, icon and docs,
+and independently passed all 98 tests in Xcode Cloud. Archive/signing, Apple
+processing, internal group membership and beta notes were read back separately.
+Physical installation and authenticated live Hermes acceptance remain unverified;
+the requested native simulator screenshot review remains deferred by the user.
+
+The repository is public. No license file has been added. Public-branch history
+was scanned by Gitleaks with no secret findings; local operational evidence and
+Drawspeak feedback artifacts were not committed. Current docs use example host
+names; older commits can still contain non-secret operational host identifiers.
 
 ## Onboarding update
 
@@ -45,7 +54,7 @@ Build 3 compiled and archived but failed one UI harness assertion (40/41 passed)
 the test inspected the covered connection Form while trying to scroll the guide
 sheet. Build 4 scopes gestures and visibility checks to the presented guide and
 passes all 41 tests. Build 3 was **not** added to the internal group. At that point the group
-contained builds 2 and 4; builds 5 and 6 were subsequently added. See the [onboarding verification](product/connection-onboarding/verify-report.md)
+contained builds 2 and 4; builds 5, 6 and 7 were subsequently added. See the [onboarding verification](product/connection-onboarding/verify-report.md)
 and its ten unmodified cloud screenshots. No local compilation or simulator run
 was used to validate this update.
 
