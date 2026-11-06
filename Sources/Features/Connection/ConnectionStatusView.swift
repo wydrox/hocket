@@ -6,7 +6,7 @@ struct ConnectionStatusView: View {
 
     private var title: String {
         switch connection {
-        case .connected: isStreaming ? "Responding" : "Connected"
+        case .connected: "Connected to Hermes"
         case .connecting: "Connecting…"
         case .reconnecting: "Reconnecting…"
         case .disconnected: "Offline"
@@ -16,15 +16,27 @@ struct ConnectionStatusView: View {
     var body: some View {
         HStack(spacing: 8) {
             if connection == .connecting || connection == .reconnecting {
-                ProgressView().controlSize(.small)
+                ProgressView().controlSize(.small).accessibilityHidden(true)
+            } else if connection == .connected {
+                Circle()
+                    .fill(.green)
+                    .frame(width: 6, height: 6)
+                    .accessibilityHidden(true)
             } else {
-                Image(systemName: connection == .connected ? "point.topleft.down.to.point.bottomright.curvepath" : "wifi.slash")
+                Image(systemName: "wifi.slash")
+                    .accessibilityHidden(true)
             }
-            Text(title)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                if connection == .connected && isStreaming {
+                    Text("Responding")
+                        .font(.caption)
+                }
+            }
         }
         .font(.subheadline)
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(connection == .connected && isStreaming ? "Connected. Hermes is responding." : title)
+        .accessibilityLabel(connection == .connected && isStreaming ? "Connected to Hermes. Hermes is responding." : title)
     }
 }

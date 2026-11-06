@@ -8,6 +8,7 @@ struct ConnectionView: View {
     @State private var token = ""
     @State private var username = ""
     @State private var password = ""
+    @State private var profileName = ""
     @State private var usesAccessToken = false
     @State private var isConnecting = false
     @State private var showsSetup = false
@@ -20,7 +21,7 @@ struct ConnectionView: View {
     @State private var validationError: String?
     @FocusState private var focusedField: Field?
 
-    private enum Field: Hashable { case address, username, password, token }
+    private enum Field: Hashable { case address, username, password, token, profile }
 
     private var endpoint: GatewayEndpoint? { try? GatewayEndpoint(address) }
 
@@ -115,6 +116,18 @@ struct ConnectionView: View {
                                 .onSubmit { connect() }
                         }
                     }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Profile Name (Optional)").font(.subheadline)
+                        TextField("Profile Name", text: $profileName)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .focused($focusedField, equals: .profile)
+                            .submitLabel(.go)
+                            .onSubmit { connect() }
+                        Text("Leave blank to use the server default. After signing in, choose from available profiles in Threads.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             if let error = validationError ?? store.lastError {
@@ -149,7 +162,11 @@ struct ConnectionView: View {
             ConnectionGuideView(finishTitle: "Enter Server Details")
         }
         .onAppear {
-            if !hasLoadedEndpoint { address = store.endpoint; hasLoadedEndpoint = true }
+            if !hasLoadedEndpoint {
+                address = store.endpoint
+                profileName = store.selectedProfileName ?? ""
+                hasLoadedEndpoint = true
+            }
         }
         .onChange(of: address) {
             clearCheck()
@@ -158,6 +175,7 @@ struct ConnectionView: View {
         .onChange(of: username) { clearSignInError() }
         .onChange(of: password) { clearSignInError() }
         .onChange(of: token) { clearSignInError() }
+        .onChange(of: profileName) { clearSignInError() }
         .onChange(of: usesAccessToken) { clearSignInError() }
         .onDisappear { password = ""; token = ""; clearCheck() }
         .disabled(isConnecting)
@@ -177,10 +195,11 @@ struct ConnectionView: View {
         focusedField = nil
         Task {
             let endpoint = address.trimmingCharacters(in: .whitespacesAndNewlines)
+            let selectedProfile = profileName.trimmingCharacters(in: .whitespacesAndNewlines)
             if usesAccessToken {
-                await store.connect(endpoint: endpoint, token: token)
+                await store.connect(endpoint: endpoint, token: token, profileName: selectedProfile.isEmpty ? nil : selectedProfile)
             } else {
-                await store.connect(endpoint: endpoint, username: username, password: password)
+                await store.connect(endpoint: endpoint, username: username, password: password, profileName: selectedProfile.isEmpty ? nil : selectedProfile)
             }
             isConnecting = false
             if store.connection == .connected {

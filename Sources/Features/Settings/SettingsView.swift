@@ -4,6 +4,7 @@ struct SettingsView: View {
     @Bindable var store: HermesStore
     @Environment(\.dismiss) private var dismiss
     @State private var showsDisconnect = false
+    @State private var showsProfiles = false
 
     private enum Destination: Hashable { case connection, help }
 
@@ -12,6 +13,13 @@ struct SettingsView: View {
             Section("Connection") {
                 ConnectionStatusView(connection: store.connection)
                 LabeledContent("Server") { Text(store.endpoint).textSelection(.enabled).multilineTextAlignment(.trailing) }
+                Button { showsProfiles = true } label: {
+                    LabeledContent("Profile") { Text(store.currentProfileTitle).multilineTextAlignment(.trailing) }
+                        .frame(minHeight: 44)
+                }
+                .accessibilityLabel("Profile")
+                .accessibilityValue(store.currentProfileTitle)
+                .accessibilityIdentifier("settings.profile")
                 NavigationLink("Edit Connection", value: Destination.connection)
                 if store.connection != .connected {
                     Button("Reconnect", systemImage: "arrow.clockwise") { Task { await store.restoreConnection() } }
@@ -40,6 +48,7 @@ struct SettingsView: View {
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        .sheet(isPresented: $showsProfiles) { ProfilePickerView(store: store) }
         .navigationDestination(for: Destination.self) { destination in
             switch destination {
             case .connection: ConnectionView(store: store, isInitialSetup: false)

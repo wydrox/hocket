@@ -22,6 +22,10 @@ supported in this beta; Web access alone does not enable hocket password login.
 ## Native features
 
 - Search, create, open, rename, and archive conversation threads.
+- Choose a Hermes profile from Threads or Settings; keep its saved connection
+  preference and drafts separate from other profiles.
+- Load older conversations in pages of 50, retaining loaded history on failures.
+  Search covers the loaded conversations; load older pages to search more history.
 - Stream replies, inspect tool activity, render Markdown and code, and stop a turn.
 - Attach system-selected photos and documents; preview and share incoming images and files.
 - Restore unsent drafts after app restarts, scoped to account and profile.
@@ -49,6 +53,7 @@ Background push notifications and a phone-side agent runtime are not implemented
 
 See [cloud setup and acceptance](docs/cloud-build.md),
 [gateway contract](docs/hermes-api-contract.md),
+[profiles and paginated history](docs/profiles-history.md),
 [connection deployment](docs/mobile-connection-plan.md), and
 [product spec and verification](docs/product/hermes-ios/README.md).
 
@@ -58,8 +63,15 @@ Build, device, and TestFlight status is recorded separately in
 The first internal beta is **1.0.0 (2)**, built and distributed by Xcode Cloud from
 `592f1d875edfaeb7f984a6234136a2ca6a5940a4`. All 34 cloud tests passed.
 
-The latest internal beta is **1.0.1 (4)**, from
+The earlier onboarding beta was **1.0.1 (4)**, from
 `bd4a7c8700d69b92b11ca2210fc693ed1fe042ae`. All **41 cloud tests passed**, and the
 Xcode Cloud TestFlight action distributed it to **hocket Internal**. The update
 adds guided connection setup and public server discovery; see the
 [onboarding evidence](docs/product/connection-onboarding/verify-report.md).
+
+The latest verified internal beta is **1.0.1 (6)**, from
+`acba677eb01384fe1928c69087da8a0f231b1a07`. All **86 cloud tests passed**,
+and the build is available in **hocket Internal**. It adds Hermes profile
+selection, paginated conversation history, compact thread rows and a pinned
+connection footer to the earlier Review 4 fixes; see
+[release status](docs/release-status.md).

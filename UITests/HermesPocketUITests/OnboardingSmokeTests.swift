@@ -143,7 +143,19 @@ final class OnboardingSmokeTests: XCTestCase {
         XCTAssertTrue(next.isHittable)
         next.tap()
         XCTAssertTrue(app.staticTexts["Connect Your Device"].waitForExistence(timeout: 10))
-        app.buttons["Close"].tap()
+        let close = app.buttons["Close"]
+        if !close.waitForExistence(timeout: 2) {
+            // At accessibility XXXL, adding Previous Step can move Close into
+            // the system toolbar's More menu instead of exposing it directly.
+            let more = app.buttons["BottomOverflowBarButtonItem"]
+            XCTAssertTrue(more.waitForExistence(timeout: 10), "The guide must expose its overflow menu when Close is not directly available.")
+            XCTAssertTrue(more.isHittable)
+            more.tap()
+        }
+        XCTAssertTrue(close.waitForExistence(timeout: 10), "Close must remain available at the largest text size.")
+        XCTAssertTrue(close.isHittable)
+        close.tap()
+        XCTAssertTrue(app.collectionViews["setup.form"].waitForNonExistence(timeout: 10), "Close must dismiss the setup guide.")
         XCTAssertTrue(app.navigationBars["hocket"].waitForExistence(timeout: 10))
     }
 

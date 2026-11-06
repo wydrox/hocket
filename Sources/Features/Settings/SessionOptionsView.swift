@@ -8,6 +8,7 @@ struct SessionOptionsView: View {
     @State private var effort = ""
     @State private var serviceTier = ""
     @State private var isSaving = false
+    @State private var isRefreshingModels = false
     @State private var modelConfirmation: ModelSelectionConfirmation?
 
     private var providers: [String] { Set(store.models.map(\.provider)).sorted() }
@@ -20,6 +21,20 @@ struct SessionOptionsView: View {
             Section {
                 Text("Options are provided by your Hermes server.")
                     .foregroundStyle(.secondary)
+            }
+            if let error = store.modelCatalogError {
+                Section {
+                    Label("Couldn’t Refresh Models", systemImage: "exclamationmark.triangle")
+                        .font(.headline)
+                    if !store.models.isEmpty {
+                        Text("The previous model list is still available.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    DisclosureGroup("Details") { Text(error).font(.subheadline).textSelection(.enabled) }
+                    Button(isRefreshingModels ? "Refreshing…" : "Retry Loading Models", systemImage: "arrow.clockwise") { refreshModels() }
+                        .frame(minHeight: 44)
+                        .disabled(isRefreshingModels || isSaving || store.connection != .connected)
+                }
             }
             if store.supportsModelControls {
                 if !store.models.isEmpty {
@@ -95,6 +110,19 @@ struct SessionOptionsView: View {
             Button("Change Model") { save(confirmation: confirmation.token) }
         } message: { confirmation in
             Text(confirmation.message)
+        }
+    }
+
+    private func refreshModels() {
+        guard !isRefreshingModels else { return }
+        isRefreshingModels = true
+        Task {
+            await store.loadCatalogs()
+            isRefreshingModels = false
+            if model.isEmpty {
+                model = store.selectedModel
+                provider = store.models.first { $0.id == model }?.provider ?? ""
+            }
         }
     }
 
