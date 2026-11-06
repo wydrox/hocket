@@ -2,6 +2,7 @@ import Foundation
 
 extension HermesStore {
     func loadCatalogs() async {
+        guard !isReadOnlyConversation else { return }
         let attempt = connectionAttempt
         let sessionID = selectedThreadID
         commandCatalogError = nil
@@ -85,6 +86,7 @@ extension HermesStore {
         @MainActor func checkScope() throws {
             try checkConnectionAttempt(attempt)
             guard selectedThreadID == sessionID else { throw CancellationError() }
+            try requireWritableConversation()
         }
         do {
             try checkScope()

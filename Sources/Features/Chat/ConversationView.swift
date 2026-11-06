@@ -43,9 +43,26 @@ struct ConversationView: View {
                         Label("Connection interrupted. Reconnect to check the response before sending again.", systemImage: "wifi.slash")
                             .font(.subheadline)
                     }
+                    if store.isReadOnlyConversation {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Saved conversation", systemImage: "archivebox")
+                                .font(.headline)
+                            Text("This conversation is available to read. Replies are not available through this connection.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
                     if store.isLoadingMessages { ProgressView("Loading Conversation…") }
                     if store.messages.isEmpty, !store.isLoadingMessages {
-                        ContentUnavailableView("Start a Conversation", systemImage: "bubble.left.and.bubble.right", description: Text("Send a message or add an attachment."))
+                        if store.isReadOnlyConversation {
+                            ContentUnavailableView("No Saved Messages", systemImage: "bubble.left.and.bubble.right")
+                        } else {
+                            ContentUnavailableView("Start a Conversation", systemImage: "bubble.left.and.bubble.right", description: Text("Send a message or add an attachment."))
+                        }
+                    }
+                    if store.hasOlderMessages || store.isLoadingOlderMessages || store.olderMessagesError != nil {
+                        earlierMessages
                     }
                     ForEach(store.messages) { message in
                         let downloadSessionID = store.selectedThreadID
@@ -57,7 +74,7 @@ struct ConversationView: View {
                             })
                         .id("\(store.accountID):\(store.profileID):\(store.selectedThreadID ?? ""):\(message.id)")
                     }
-                    if let interaction = store.pendingInteraction {
+                    if let interaction = store.pendingInteraction, !store.isReadOnlyConversation {
                         InteractionPanel(interaction: interaction, store: store)
                             .id(interaction.id)
                     }
@@ -79,7 +96,7 @@ struct ConversationView: View {
                 if nearEnd { hasNewContent = false }
             }
             .onChange(of: store.messages.last?.text) { _, _ in contentChanged(proxy) }
-            .onChange(of: store.messages.count) { _, _ in contentChanged(proxy) }
+            .onChange(of: store.messages.last?.id) { _, _ in contentChanged(proxy) }
             .onChange(of: store.pendingInteraction?.id) { _, _ in contentChanged(proxy) }
             .onChange(of: store.selectedThreadID) { _, _ in
                 followsEnd = true
@@ -100,7 +117,9 @@ struct ConversationView: View {
             }
         }
         .safeAreaBar(edge: .bottom) {
-            ComposerView(store: store) { showsCommands = true }
+            if !store.isReadOnlyConversation {
+                ComposerView(store: store) { showsCommands = true }
+            }
         }
         .navigationTitle(threadTitle)
         .navigationBarTitleDisplayMode(.inline)
@@ -108,19 +127,21 @@ struct ConversationView: View {
             MessageAttachment.safeExternalURL(url.absoluteString) == nil ? .discarded : .systemAction
         })
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Session Options", systemImage: "slider.horizontal.3") { showsSession = true }
-            }
-            ToolbarOverflowMenu {
-                Button("Commands", systemImage: "slash.circle") { showsCommands = true }
-                if store.supportsThreadRename {
-                    Button("Rename Thread", systemImage: "pencil") {
-                        newTitle = threadTitle == "New Thread" ? "" : threadTitle
-                        showsRename = true
-                    }
+            if !store.isReadOnlyConversation {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Session Options", systemImage: "slider.horizontal.3") { showsSession = true }
                 }
-                if store.supportsThreadArchive {
-                    Button("Archive Thread", systemImage: "archivebox") { showsArchiveConfirmation = true }
+                ToolbarOverflowMenu {
+                    Button("Commands", systemImage: "slash.circle") { showsCommands = true }
+                    if store.supportsThreadRename {
+                        Button("Rename Thread", systemImage: "pencil") {
+                            newTitle = threadTitle == "New Thread" ? "" : threadTitle
+                            showsRename = true
+                        }
+                    }
+                    if store.supportsThreadArchive {
+                        Button("Archive Thread", systemImage: "archivebox") { showsArchiveConfirmation = true }
+                    }
                 }
             }
         }
@@ -142,6 +163,36 @@ struct ConversationView: View {
             Button("Cancel", role: .cancel) { }
         } message: {
             Text("This thread will be removed from the active thread list. Its conversation stays on your Hermes server.")
+        }
+    }
+
+    private var earlierMessages: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if store.isLoadingOlderMessages {
+                ProgressView("Loading Earlier Messages…")
+                    .frame(minHeight: 44)
+            } else if store.olderMessagesError == nil {
+                Button {
+                    Task { await store.loadOlderMessages() }
+                } label: {
+                    Label("Load Earlier Messages", systemImage: "arrow.up")
+                        .frame(minHeight: 44)
+                }
+            }
+            if let error = store.olderMessagesError {
+                Label("Couldn’t Load Earlier Messages", systemImage: "exclamationmark.circle")
+                    .font(.subheadline.weight(.semibold))
+                Text(error)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Button {
+                    Task { await store.loadOlderMessages() }
+                } label: {
+                    Label("Retry Loading Earlier Messages", systemImage: "arrow.clockwise")
+                        .frame(minHeight: 44)
+                }
+                .disabled(store.isLoadingOlderMessages)
+            }
         }
     }
 

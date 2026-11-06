@@ -93,7 +93,9 @@ struct ThreadSplitView: View {
             }
         } detail: {
             NavigationStack {
-                if store.selectedThreadID != nil {
+                if let threadID = store.openingThreadID ?? store.threadOpenErrorID {
+                    ThreadOpeningView(store: store, threadID: threadID)
+                } else if store.selectedThreadID != nil {
                     ConversationView(store: store, showsConnectionStatus: horizontalSizeClass != .regular || columnVisibility == .detailOnly)
                 } else {
                     ContentUnavailableView {
@@ -110,10 +112,16 @@ struct ThreadSplitView: View {
             }
         }
         .onChange(of: selection) { _, id in
-            guard let id, id != store.selectedThreadID else { return }
+            guard let id, id != store.selectedThreadID || store.threadOpenErrorID != nil else { return }
             Task { await store.openThread(id) }
         }
         .onChange(of: store.selectedThreadID) { _, id in selection = id }
+        .onChange(of: store.threadOpenErrorID) { _, id in
+            if id != nil { selection = nil }
+        }
+        .onChange(of: store.openingThreadID) { _, id in
+            if id == nil, store.threadOpenErrorID == nil { selection = store.selectedThreadID }
+        }
         .onChange(of: store.threadSearchQuery) { _, query in search = query }
         .onAppear { selection = store.selectedThreadID; search = store.threadSearchQuery }
         .sheet(isPresented: $showsProfiles) { ProfilePickerView(store: store) }

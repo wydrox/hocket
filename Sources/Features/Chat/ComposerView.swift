@@ -75,7 +75,7 @@ struct ComposerView: View {
                     .disabled(store.isLoadingMessages)
                 if store.isStreaming && store.supportsInterrupt {
                     Button(isStopping ? "Stop Requested" : "Stop Response", systemImage: "stop.fill") {
-                        guard !isStopping else { return }
+                        guard !isStopping, !store.isReadOnlyConversation else { return }
                         isStopping = true
                         Task { await store.interrupt(); isStopping = false }
                     }
@@ -103,6 +103,7 @@ struct ComposerView: View {
         .padding(.vertical, 8)
         .frame(maxWidth: 760)
         .frame(maxWidth: .infinity)
+        .disabled(store.isReadOnlyConversation)
         .fileImporter(isPresented: $showsFiles, allowedContentTypes: [.item]) { result in
             switch result {
             case .success(let url): importFile(url)
@@ -121,7 +122,7 @@ struct ComposerView: View {
     }
 
     private var canSend: Bool {
-        store.connection == .connected && !store.isLoadingMessages && !isImporting && !isSending && !store.isSending && !store.isStreaming &&
+        !store.isReadOnlyConversation && store.connection == .connected && !store.isLoadingMessages && !isImporting && !isSending && !store.isSending && !store.isStreaming &&
         (!store.composerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !store.attachments.isEmpty)
     }
 
@@ -145,6 +146,7 @@ struct ComposerView: View {
     }
 
     private func importPhoto(_ item: PhotosPickerItem) {
+        guard !store.isReadOnlyConversation else { return }
         let threadID = store.selectedThreadID
         isImporting = true
         importError = nil
@@ -156,7 +158,7 @@ struct ComposerView: View {
                     return
                 }
                 guard data.count <= maximumAttachmentBytes else { importError = "Choose an attachment smaller than 16 MB."; return }
-                guard store.selectedThreadID == threadID else {
+                guard store.selectedThreadID == threadID, !store.isReadOnlyConversation else {
                     importError = "The conversation changed. Choose the attachment again for this thread."
                     return
                 }
@@ -167,6 +169,7 @@ struct ComposerView: View {
     }
 
     private func importFile(_ url: URL) {
+        guard !store.isReadOnlyConversation else { return }
         let threadID = store.selectedThreadID
         isImporting = true
         importError = nil
@@ -183,7 +186,7 @@ struct ComposerView: View {
                     }
                     return try Data(contentsOf: url, options: .mappedIfSafe)
                 }.value
-                guard store.selectedThreadID == threadID else {
+                guard store.selectedThreadID == threadID, !store.isReadOnlyConversation else {
                     importError = "The conversation changed. Choose the attachment again for this thread."
                     return
                 }

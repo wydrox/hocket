@@ -50,6 +50,27 @@ conversation or mount an older superseded conversation read-only. Hocket preserv
 that server decision; it does not import, duplicate or recreate conversations to
 work around it.
 
+## Opening stored conversations
+
+Some legacy CLI/TUI conversations are readable in the dashboard history but cannot
+be adopted by a remote native connection. After a canonical `not_found` refusal,
+hocket can read messages only for a physical conversation already listed in the
+same endpoint/account/profile scope. It uses the authenticated, explicitly scoped
+`GET /api/sessions/{id}/messages` endpoint with latest-first pages of 500 raw rows,
+compression ancestors, and display projection. Earlier pages use the raw returned
+count; hidden/model-only rows do not prematurely end pagination. Failures preserve
+already loaded messages and retry the same offset.
+
+This view is explicitly read-only. REST physical descendants never become canonical
+owners, subscriptions, replay cursors or mutation fences. Sending, commands, model
+changes, approvals and server-file downloads remain unavailable. Already embedded
+attachments can still be saved. Normal canonical conversations retain their normal
+controls. Switching profiles or conversations rejects late transcript pages.
+
+Failed opens now show their own loading/error view with Retry, including the first
+thread opened after selecting a profile. Selecting the same row or returning to a
+previous thread can retry instead of remaining on the generic empty placeholder.
+
 ## Validation boundary
 
 Regression tests cover routing and canonical profile verification, credential

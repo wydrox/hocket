@@ -2,6 +2,7 @@ import Foundation
 
 extension HermesStore {
     func sendMessage() async {
+        guard !isReadOnlyConversation else { report(GatewayError.invalidResponse("This saved conversation is read-only through this connection.")); return }
         guard !isSending, !isUploadingAttachment else { return }
         let attempt = connectionAttempt
         lastError = nil
@@ -39,6 +40,7 @@ extension HermesStore {
     }
 
     func retryMessage(_ id: String) async {
+        guard !isReadOnlyConversation else { report(GatewayError.invalidResponse("This saved conversation is read-only through this connection.")); return }
         guard !isSending else { return }
         let attempt = connectionAttempt
         lastError = nil
@@ -60,6 +62,7 @@ extension HermesStore {
     }
 
     func submit(_ submission: PendingSubmission) async throws {
+        try requireWritableConversation()
         let attempt = connectionAttempt
         guard submission.endpoint == credentials?.endpoint, submission.accountID == accountID,
               submission.profileID == profileID else { throw CancellationError() }
@@ -93,6 +96,7 @@ extension HermesStore {
         let attempt = connectionAttempt
         lastError = nil
         do {
+            try requireWritableConversation()
             guard let id = selectedThreadID, let cursor = cursors[id] else { throw GatewayError.missingSession }
             _ = try await transport.call("session.interrupt", params: ["session_id": .string(id), "execution_generation": .integer(cursor.generation)])
             try checkConnectionAttempt(attempt)
@@ -102,6 +106,7 @@ extension HermesStore {
     }
 
     func addAttachment(data: Data, name: String, mimeType: String) async {
+        guard !isReadOnlyConversation else { report(GatewayError.invalidResponse("This saved conversation is read-only through this connection.")); return }
         let attempt = connectionAttempt
         lastError = nil
         guard !isUploadingAttachment else { return }
@@ -140,6 +145,7 @@ extension HermesStore {
         let attempt = connectionAttempt
         lastError = nil
         do {
+            try requireWritableConversation()
             guard let id = selectedThreadID else { throw GatewayError.missingSession }
             var name = command.name.hasPrefix("/") ? String(command.name.dropFirst()) : command.name
             for _ in 0..<5 {

@@ -28,6 +28,13 @@ final class HermesStore {
     var isLoadingProfiles = false
     var isSwitchingProfile = false
     var isLoadingMessages = false
+    var openingThreadID: String?
+    var threadOpenErrorID: String?
+    var threadOpenError: String?
+    var isReadOnlyConversation = false
+    var hasOlderMessages = false
+    var isLoadingOlderMessages = false
+    var olderMessagesError: String?
     var isSending = false
     var isUploadingAttachment = false
     var threads: [HermesThread] = []
@@ -42,11 +49,11 @@ final class HermesStore {
     var models: [ModelOption] = []
     var pendingInteraction: PendingInteraction?
 
-    var supportsAttachments: Bool { connection == .connected && selectedThreadID != nil }
-    var supportsThreadRename: Bool { connection == .connected }
-    var supportsThreadArchive: Bool { connection == .connected }
-    var supportsModelControls: Bool { connection == .connected && selectedThreadID != nil && !models.isEmpty }
-    var supportsInterrupt: Bool { connection == .connected && selectedThreadID != nil }
+    var supportsAttachments: Bool { connection == .connected && selectedThreadID != nil && !isReadOnlyConversation }
+    var supportsThreadRename: Bool { connection == .connected && !isReadOnlyConversation }
+    var supportsThreadArchive: Bool { connection == .connected && !isReadOnlyConversation }
+    var supportsModelControls: Bool { connection == .connected && selectedThreadID != nil && !models.isEmpty && !isReadOnlyConversation }
+    var supportsInterrupt: Bool { connection == .connected && selectedThreadID != nil && !isReadOnlyConversation }
     var availableEfforts: [String] {
         availableEfforts(for: selectedModel)
     }
@@ -81,6 +88,7 @@ final class HermesStore {
     @ObservationIgnored var reconnectTask: Task<Void, Never>?
     @ObservationIgnored var refreshTask: Task<Void, Never>?
     @ObservationIgnored var threadHistory = ThreadHistoryState()
+    @ObservationIgnored var storedTranscript: StoredTranscriptState?
     @ObservationIgnored var profileRequestID = UUID()
     @ObservationIgnored var connectionAttempt = UUID()
     @ObservationIgnored var navigationAttempt = UUID()
@@ -194,6 +202,10 @@ final class HermesStore {
         isLoadingProfiles = false
         isSwitchingProfile = false
         isLoadingMessages = false
+        openingThreadID = nil
+        threadOpenErrorID = nil
+        threadOpenError = nil
+        isLoadingOlderMessages = false
         isSending = false
         isUploadingAttachment = false
         bufferedEvents = []
@@ -353,6 +365,10 @@ final class HermesStore {
         profileRequestID = UUID()
         resetThreadHistory()
         isLoadingMessages = false
+        openingThreadID = nil
+        threadOpenErrorID = nil
+        threadOpenError = nil
+        resetStoredTranscript()
         isLoadingProfiles = false
         isSending = false
         isUploadingAttachment = false

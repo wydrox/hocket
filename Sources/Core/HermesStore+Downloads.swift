@@ -3,6 +3,7 @@ import Foundation
 extension HermesStore {
     func canDownload(_ attachment: MessageAttachment) -> Bool {
         if attachment.kind == .embeddedImage { return true }
+        guard !isReadOnlyConversation else { return false }
         guard let credentials, let endpoint = try? GatewayEndpoint(credentials.endpoint) else { return false }
         return attachment.serverPath(origin: endpoint.origin) != nil
     }
@@ -19,6 +20,9 @@ extension HermesStore {
             if attachment.kind == .embeddedImage, let data = attachment.embeddedData {
                 url = try await downloader.save(data, name: attachment.name, mimeType: attachment.mimeType)
             } else {
+                guard !isReadOnlyConversation else {
+                    throw GatewayError.invalidResponse("File downloads are not available for this saved conversation through this connection.")
+                }
                 guard let path = attachment.serverPath(origin: origin) else {
                     throw GatewayError.invalidResponse("External attachments open as HTTPS links. Hermes credentials are never sent to another origin.")
                 }

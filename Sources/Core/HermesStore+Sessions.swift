@@ -8,7 +8,7 @@ extension HermesStore {
         do { try await loadThreads(query: query ?? threadSearchQuery) } catch { /* The current request owns its error. */ }
     }
 
-    private var currentHistoryScope: ThreadHistoryScope {
+    var currentHistoryScope: ThreadHistoryScope {
         ThreadHistoryScope(endpoint: credentials?.endpoint, account: accountID, profile: profileID, profileName: credentials?.profileName)
     }
 
@@ -180,9 +180,22 @@ extension HermesStore {
         return result
     }
 
-    func openThread(_ id: String, rpc: SessionRPC? = nil) async {
+    func openThread(_ id: String, rpc: SessionRPC? = nil, fetchStoredTranscript: StoredTranscriptFetch? = nil) async {
         guard !isLoadingMessages else { return }
         let connection = connectionAttempt
+        let navigation = UUID()
+        navigationAttempt = navigation
+        openingThreadID = id
+        threadOpenErrorID = nil
+        threadOpenError = nil
+        isLoadingMessages = true
+        isLoadingOlderMessages = false
+        defer {
+            if connectionAttempt == connection, navigationAttempt == navigation {
+                openingThreadID = nil
+                isLoadingMessages = false
+            }
+        }
         lastError = nil
         saveDraft()
         let oldID = selectedThreadID
@@ -191,27 +204,52 @@ extension HermesStore {
                 _ = try await sessionCall("session.detach", params: ["session_id": .string(oldID), "subscription_id": .string(subscription)], attempt: connection, rpc: rpc)
             }
             try checkConnectionAttempt(connection)
-            try await resume(id, rpc: rpc)
+            try await resume(id, rpc: rpc, fetchStoredTranscript: fetchStoredTranscript, navigation: navigation)
             try checkConnectionAttempt(connection)
-            await loadCatalogs()
+            guard navigationAttempt == navigation else { throw CancellationError() }
+            openingThreadID = nil
+            isLoadingMessages = false
+            if !isReadOnlyConversation { await loadCatalogs() }
             try checkConnectionAttempt(connection)
         } catch {
-            guard connectionAttempt == connection else { return }
+            guard connectionAttempt == connection, navigationAttempt == navigation else { return }
+            if error is CancellationError { return }
+            threadOpenErrorID = id
+            threadOpenError = error.localizedDescription
             report(error)
         }
     }
 
-    func resume(_ id: String, rpc: SessionRPC? = nil) async throws {
+    func resume(_ id: String, rpc: SessionRPC? = nil, fetchStoredTranscript: StoredTranscriptFetch? = nil,
+                navigation: UUID? = nil) async throws {
         let connection = connectionAttempt
         isLoadingMessages = true
-        let attempt = UUID()
+        let attempt = navigation ?? UUID()
         navigationAttempt = attempt
-        defer { if connectionAttempt == connection, navigationAttempt == attempt { isLoadingMessages = false } }
+        defer { if navigation == nil, connectionAttempt == connection, navigationAttempt == attempt { isLoadingMessages = false } }
         let oldCursor = cursors[id]
-        try await reconcileReceipts(sessionID: id, rpc: rpc)
+        if !(isReadOnlyConversation && storedTranscript?.selectionID == id) {
+            try await reconcileReceipts(sessionID: id, rpc: rpc)
+        }
         try checkConnectionAttempt(connection)
         guard navigationAttempt == attempt else { throw CancellationError() }
-        let snapshot = try await sessionCall("session.resume", params: ["session_id": .string(id)], attempt: connection, rpc: rpc)
+        let snapshot: JSONValue
+        do {
+            snapshot = try await sessionCall("session.resume", params: ["session_id": .string(id)], attempt: connection, rpc: rpc)
+        } catch {
+            try checkConnectionAttempt(connection)
+            guard navigationAttempt == attempt else { throw CancellationError() }
+            guard let source = storedTranscriptSource(for: id, refusal: error) else { throw error }
+            let page = try await fetchStoredPage(physicalID: source.physicalID, profile: source.profile,
+                offset: 0, fetch: fetchStoredTranscript)
+            try checkConnectionAttempt(connection)
+            guard navigationAttempt == attempt, source.scope == currentHistoryScope else { throw CancellationError() }
+            installStoredTranscript(page, source: source)
+            let buffered = bufferedEvents
+            bufferedEvents = []
+            for event in buffered { applyEvent(event) }
+            return
+        }
         guard navigationAttempt == attempt else { throw CancellationError() }
         try installSnapshot(snapshot, requestedID: id)
         let owner = selectedThreadID ?? id
@@ -238,6 +276,7 @@ extension HermesStore {
         guard let id = snapshot["session_id"].string, snapshot["info"]["desktop_protocol"].string == "hermes-gateway-v1" else {
             throw GatewayError.unsupportedAuthority
         }
+        resetStoredTranscript()
         if let requestedID, requestedID != id { threadHistory.resumedAliases[requestedID] = id }
         activateDraft(sessionID: id)
         selectedThreadID = id
@@ -283,6 +322,9 @@ extension HermesStore {
         guard !isLoadingMessages else { return }
         let connection = connectionAttempt, navigation = UUID()
         navigationAttempt = navigation
+        openingThreadID = nil
+        threadOpenErrorID = nil
+        threadOpenError = nil
         lastError = nil
         saveDraft()
         isLoadingMessages = true
@@ -369,6 +411,7 @@ extension HermesStore {
     @discardableResult
     func mutate(_ id: String, operation: String, payload: [String: JSONValue], requiresGeneration: Bool,
                 rpc: SessionRPC? = nil, fetchMutationSnapshot: SessionMutationSnapshotFetch? = nil) async throws -> JSONValue {
+        try requireWritableConversation()
         let connection = connectionAttempt
         var owner = threadHistory.resumedAliases[id] ?? id
         if cursors[owner] == nil {

@@ -9,7 +9,11 @@ extension HermesStore {
     func applyEvent(_ event: JSONValue) {
         let type = event["type"].string ?? ""
         if type == "sessions.changed" { scheduleRefresh(); return }
-        if type == "skills.changed" { Task { [weak self] in await self?.loadCatalogs() }; return }
+        if type == "skills.changed" {
+            if !isReadOnlyConversation { Task { [weak self] in await self?.loadCatalogs() } }
+            return
+        }
+        guard !isReadOnlyConversation else { return }
         guard let id = event["session_id"].string, id == selectedThreadID else { return }
         var cursor = cursors[id] ?? SessionCursor()
         if type == "session.replay_gap" {
@@ -194,6 +198,7 @@ extension HermesStore {
     func refreshPendingInteraction() { pendingInteraction = interactions.first { $0.sessionID == selectedThreadID } }
 
     func receiveServerRequest(_ request: GatewayEnvelope) {
+        guard !isReadOnlyConversation else { return }
         guard let rpcID = request.id, let method = request.method, let payload = request.params,
               let sessionID = payload["session_id"].string else { return }
         let id = "request:\(rpcID.identifier ?? UUID().uuidString)"
@@ -232,6 +237,7 @@ extension HermesStore {
     }
 
     func respondToInteraction(_ answer: String) async {
+        guard !isReadOnlyConversation else { return }
         guard var interaction = pendingInteraction else { return }
         lastError = nil
         do {
@@ -269,6 +275,7 @@ extension HermesStore {
     }
 
     func respondToInteraction(_ answers: [String]) async {
+        guard !isReadOnlyConversation else { return }
         guard let interaction = pendingInteraction, interaction.allowsMultipleSelection else {
             lastError = "This question accepts one answer."
             return
@@ -283,6 +290,7 @@ extension HermesStore {
     }
 
     func cancelInteraction() async {
+        guard !isReadOnlyConversation else { return }
         guard let interaction = pendingInteraction else { return }
         if let requestID = interaction.serverRequestID, interaction.kind == .clarify {
             do {
