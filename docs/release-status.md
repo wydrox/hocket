@@ -73,8 +73,7 @@ preserved. Xcode Cloud uses Apple's managed signing.
 
 ## Connection and acceptance boundary
 
-The existing tailnet-only HTTPS route at
-`https://rafals-mac-mini.tail71fdd0.ts.net:8443` points to the canonical Hermes
+The owner’s private tailnet-only HTTPS route on port 8443 points to the canonical Hermes
 gateway on loopback port 55263. Provider discovery returned HTTP 200; protected
 sessions returned 401 without credentials. The separate root HTTPS route was
 preserved. No gateway restart or conversation mutation was performed.

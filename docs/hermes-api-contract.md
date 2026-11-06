@@ -411,7 +411,7 @@ Metadata-only checks on 2026-11-05:
 | Surface | Evidence | Verdict |
 |---|---|---|
 | Running Hermes gateway | PID 8137, loopback `127.0.0.1:55263`, matching source SHA/version above. `GET /api/auth/providers` returned 200 JSON. | Local listener reachable; no authenticated chat or inference exercised. |
-| Configured private dashboard URL | `https://rafals-mac-mini.tail71fdd0.ts.net:8443`; Tailscale Serve proxies to `127.0.0.1:18481`. No listener on that port; provider bootstrap returned HTTP 502. | Configured tailnet route currently broken. |
+| Configured private dashboard URL | Private tailnet URL on port 8443 (host omitted); Tailscale Serve proxies to `127.0.0.1:18481`. No listener on that port; provider bootstrap returned HTTP 502. | Configured tailnet route currently broken. |
 | Existing public Cloudflare ingress | `pocket.wyderka.cc` proxies to `localhost:9220`; no listener on that port. HTTPS bootstrap returned URL transport error. | Existing ingress is not a verified usable Hermes endpoint. |
 
 Commands: `lsof -nP -iTCP -sTCP:LISTEN`, sanitized process executable/action inspection,

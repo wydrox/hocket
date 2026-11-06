@@ -33,7 +33,7 @@ The configured public hostname matches the existing Tailscale Serve hostname.
 | Gateway | PID 8137, version 0.22.5; source and running SHA `d49e2ebbaed42718659c13f82c04cde7d8ab10bd`. |
 | Canonical listener | `127.0.0.1:55263`; loopback only. Provider bootstrap HTTP 200. |
 | Login gate | Enabled; `basic` password provider active. |
-| Config | `dashboard.public_url` is `https://rafals-mac-mini.tail71fdd0.ts.net:8443`. |
+| Config | A private tailnet URL on port 8443 is configured (host omitted). |
 | Config credential presence | Basic username configured: true; password hash configured: true; signing secret configured: true. Values were neither printed nor copied. |
 | Environment-file presence | Basic username override present: true; plaintext password override present: true. Values were neither printed nor copied. Nonempty environment password takes precedence over configured hash. |
 | Tailscale Serve | Before repair: :8443 pointed at inactive :18481 and returned 502. After repair: :8443 points at live :55263; auth bootstrap 200, protected sessions 401 without credentials. HTTPS :443 remains T3 at :3773. |
@@ -71,8 +71,8 @@ Verify without credentials or model traffic:
 
 ```sh
 tailscale serve status
-curl --fail --silent https://rafals-mac-mini.tail71fdd0.ts.net:8443/api/auth/providers | python3 -c 'import json,sys; d=json.load(sys.stdin); print({"providers":[{k:p[k] for k in ("name","supports_password") if k in p} for p in d.get("providers",[])]})'
-curl --silent --output /dev/null --write-out '%{http_code}\n' https://rafals-mac-mini.tail71fdd0.ts.net:8443/api/auth/me
+curl --fail --silent https://your-computer.your-tailnet.ts.net:8443/api/auth/providers | python3 -c 'import json,sys; d=json.load(sys.stdin); print({"providers":[{k:p[k] for k in ("name","supports_password") if k in p} for p in d.get("providers",[])]})'
+curl --silent --output /dev/null --write-out '%{http_code}\n' https://your-computer.your-tailnet.ts.net:8443/api/auth/me
 ```
 
 Expected: existing T3 443 mapping retained; 8443 mapping points to 55263; provider
@@ -239,12 +239,12 @@ webapp:
   enabled: true
   host: 127.0.0.1
   port: 18481
-  public_url: https://rafals-mac-mini.tail71fdd0.ts.net:8443
+  public_url: https://your-computer.your-tailnet.ts.net:8443
 ```
 
 Use `hermes config set webapp.enabled true`, `hermes config set webapp.host 127.0.0.1`,
 `hermes config set webapp.port 18481`, and
-`hermes config set webapp.public_url https://rafals-mac-mini.tail71fdd0.ts.net:8443`
+`hermes config set webapp.public_url https://your-computer.your-tailnet.ts.net:8443`
 through the supported configuration writer. Existing basic provider remains in
 `dashboard.basic_auth`. The Webapp bundle also needs availability; this option
 is not an excuse to perform builds on the host during active sessions.
