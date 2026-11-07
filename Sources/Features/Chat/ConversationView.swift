@@ -43,16 +43,6 @@ struct ConversationView: View {
                         Label("Connection interrupted. Reconnect to check the response before sending again.", systemImage: "wifi.slash")
                             .font(.subheadline)
                     }
-                    if store.isReadOnlyConversation {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Label("Saved conversation", systemImage: "archivebox")
-                                .font(.headline)
-                            Text("This conversation is available to read. Replies are not available through this connection.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
-                        .accessibilityElement(children: .combine)
-                    }
                     if store.isLoadingMessages { ProgressView("Loading Conversation…") }
                     if store.messages.isEmpty, !store.isLoadingMessages {
                         if store.isReadOnlyConversation {
@@ -117,7 +107,9 @@ struct ConversationView: View {
             }
         }
         .safeAreaBar(edge: .bottom) {
-            if !store.isReadOnlyConversation {
+            if store.isReadOnlyConversation {
+                readOnlyBar
+            } else {
                 ComposerView(store: store) { showsCommands = true }
             }
         }
@@ -164,6 +156,43 @@ struct ConversationView: View {
         } message: {
             Text("This thread will be removed from the active thread list. Its conversation stays on your Hermes server.")
         }
+    }
+
+    /// Long transcripts open at their end, so this explanation stays where the composer would be.
+    private var readOnlyBar: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Label("Read-Only Conversation", systemImage: "archivebox")
+                    .font(.subheadline.weight(.semibold))
+                Text("Hermes accepts replies to this conversation only on its host computer.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .combine)
+            if let error = store.lastError {
+                Label(error, systemImage: "exclamationmark.triangle")
+                    .font(.subheadline)
+                    .foregroundStyle(.red)
+            }
+            Button {
+                Task { await store.continueStoredConversationInNewThread() }
+            } label: {
+                Group {
+                    if store.isLoadingMessages {
+                        ProgressView("Starting New Thread…")
+                    } else {
+                        Label("Continue in New Thread", systemImage: "square.and.pencil")
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 36)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(store.connection != .connected || store.isLoadingMessages)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .frame(maxWidth: 760)
+        .frame(maxWidth: .infinity)
     }
 
     private var earlierMessages: some View {

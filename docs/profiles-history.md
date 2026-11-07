@@ -67,6 +67,11 @@ changes, approvals and server-file downloads remain unavailable. Already embedde
 attachments can still be saved. Normal canonical conversations retain their normal
 controls. Switching profiles or conversations rejects late transcript pages.
 
+Transcripts open at their end, so a persistent bar replaces the composer and states
+why replies are unavailable. **Continue in New Thread** creates a normal `gui`
+conversation and leaves a Hermes `@session:<profile>/<id>` reference in its editable
+draft. Nothing is sent or copied, and the saved conversation stays unchanged.
+
 Failed opens now show their own loading/error view with Retry, including the first
 thread opened after selecting a profile. Selecting the same row or returning to a
 previous thread can retry instead of remaining on the generic empty placeholder.

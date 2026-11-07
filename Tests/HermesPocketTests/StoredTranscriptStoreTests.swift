@@ -168,6 +168,36 @@ struct StoredTranscriptStoreTests {
         #expect(store.supportsAttachments)
     }
 
+    @Test @MainActor func continuingSavedConversationCreatesWritableThreadWithReferenceDraft() async throws {
+        let store = listedStore()
+        store.runtime = .object(["session_create": .object(["sources": .array([.string("gui")])])])
+        await store.openThread("legacy", rpc: { _, _ in throw notFound }, fetchStoredTranscript: { _, _, _ in try page([row(1, "Saved")]) })
+        #expect(store.isReadOnlyConversation)
+
+        var methods: [String] = []
+        await store.continueStoredConversationInNewThread(rpc: { method, _ in
+            methods.append(method)
+            return snapshot("created")
+        })
+        #expect(methods == ["session.create"])
+        #expect(!store.isReadOnlyConversation)
+        #expect(store.selectedThreadID == "created")
+        #expect(store.composerText == "Continue from @session:alpha/legacy\n\n")
+        #expect(store.submissions.isEmpty)
+    }
+
+    @Test @MainActor func failedContinuationStaysReadOnlyWithoutReferenceDraft() async throws {
+        let store = listedStore()
+        store.runtime = .object(["session_create": .object(["sources": .array([.string("gui")])])])
+        await store.openThread("legacy", rpc: { _, _ in throw notFound }, fetchStoredTranscript: { _, _, _ in try page([row(1, "Saved")]) })
+
+        await store.continueStoredConversationInNewThread(rpc: { _, _ in throw GatewayError.timeout })
+        #expect(store.isReadOnlyConversation)
+        #expect(store.selectedThreadID == "legacy")
+        #expect(store.composerText.isEmpty)
+        #expect(store.lastError != nil)
+    }
+
     @Test @MainActor func lateOlderPageCannotLeakAcrossProfileChange() async throws {
         let store = listedStore()
         await store.openThread("legacy", rpc: { _, _ in throw notFound }, fetchStoredTranscript: { _, _, _ in
