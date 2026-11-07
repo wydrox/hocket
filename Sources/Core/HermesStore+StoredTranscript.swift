@@ -96,6 +96,17 @@ extension HermesStore {
         }
     }
 
+    /// Starts a writable conversation that points at the saved one. Nothing is sent or copied:
+    /// the draft holds Hermes's own session reference, which the user can edit or remove.
+    func continueStoredConversationInNewThread(rpc: SessionRPC? = nil) async {
+        guard isReadOnlyConversation, let source = storedTranscript else { return }
+        await createThread(rpc: rpc)
+        guard !isReadOnlyConversation, selectedThreadID != nil, selectedThreadID != source.selectionID,
+              source.scope == currentHistoryScope, composerText.isEmpty else { return }
+        composerText = "Continue from @session:\(source.profile)/\(source.physicalID)\n\n"
+        saveDraft()
+    }
+
     func requireWritableConversation() throws {
         guard !isReadOnlyConversation else {
             throw GatewayError.invalidResponse("This saved conversation is read-only through this connection. Start a new conversation to send a message.")
